@@ -108,74 +108,103 @@
         .view-profile-btn:hover {
             background-color: #a09c8b;
         }
-        .charts-container {
-            display: flex;
-            flex-wrap: wrap;
-            margin-top: 20px;
+        .similarity-score {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
         }
-        .chart {
+        .key-terms {
+            font-size: 12px;
+            color: #555;
+            margin-top: 8px;
+            font-style: italic;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        .no-results {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            display: none;
+        }
+        .quick-links {
             background-color: white;
             border-radius: 4px;
             padding: 15px;
             margin-bottom: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            width: calc(50% - 10px);
-            box-sizing: border-box;
         }
-        .chart:first-child {
-            margin-right: 20px;
-        }
-        .chart-title {
-            font-size: 14px;
-            font-weight: bold;
+        .quick-links h3 {
+            margin-top: 0;
             margin-bottom: 10px;
+            color: #333;
         }
-        .pie-chart {
-            width: 100%;
-            height: 200px;
-            background-color: #f9f9f9;
-            border-radius: 4px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        .quick-links ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
         }
-        .line-chart {
-            width: 100%;
-            height: 200px;
-            background-color: #f9f9f9;
-            border-radius: 4px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+        .quick-links li {
+            margin-bottom: 8px;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+        .quick-links a {
+            text-decoration: none;
+            color: #666;
+            display: block;
+            padding: 5px 0;
+            transition: color 0.2s;
         }
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
+        .quick-links a:hover {
+            color: #333;
         }
-        th {
-            background-color: #b8b19f;
-            color: white;
-        }
-        tr:hover {
-            background-color: #f5f5f5;
-        }
-        .supervisor-list tr td:first-child {
-            width: 30px;
-        }
-        .abstract {
+        .search-trends {
             background-color: white;
             border-radius: 4px;
             padding: 15px;
-            margin: 20px 0;
+            margin-bottom: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .search-trends h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .trends-container {
+            display: flex;
+            justify-content: space-between;
+        }
+        .trend-column {
+            flex: 1;
+            margin-right: 15px;
+        }
+        .trend-column:last-child {
+            margin-right: 0;
+        }
+        .trend-title {
+            font-weight: bold;
+            margin-bottom: 10px;
             font-size: 14px;
-            line-height: 1.5;
+            color: #555;
+        }
+        .trend-tags {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .trend-tag {
+            background-color: #f0ede2;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .trend-tag:hover {
+            background-color: #e6e2d3;
         }
     </style>
 </head>
@@ -183,60 +212,61 @@
     <div class="header">
         <div class="logo">SUPERVISOR RECOMMENDER SYSTEM</div>
         <div class="nav-links">
-            <a href="homepage.html">Home</a>
-            <a href="profiles.html">Profiles</a>
-            <a href="index.html">Logout</a>
+            <a href="/homepage">Home</a>
+            <a href="/profiles.html">My Profile</a>
+            <a href="/logout">Logout</a>
         </div>
     </div>
 
     <div class="container">
         <div class="search-container">
             <span class="search-icon">🔍</span>
-            <input type="text" class="search-input" placeholder="Enter keyword (e.g. AI, Image processing)" id="searchInput">
+            <input type="text" class="search-input" placeholder="Enter research topic or interest (e.g. AI, Image processing)" id="searchInput">
+        </div>
+
+        <div class="search-trends">
+            <h3>Search Trends</h3>
+            <div class="trends-container">
+                <div class="trend-column">
+                    <div class="trend-title">Recently Searched</div>
+                    <div class="trend-tags" id="recentSearches">
+                        <!-- Recent searches will be populated here -->
+                    </div>
+                </div>
+                <div class="trend-column">
+                    <div class="trend-title">Most Searched</div>
+                    <div class="trend-tags" id="mostSearched">
+                        <!-- Most searched items will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="quick-links">
+            <h3>Quick Links</h3>
+            <ul>
+                <li><a href="/supervisor_list.html">View All Supervisors</a></li>
+                <li><a href="/past_fyp.html">Browse Past FYP Titles</a></li>
+            </ul>
+        </div>
+
+        <div id="loadingIndicator" class="loading">
+            Searching for matching supervisors...
+        </div>
+
+        <div id="noResults" class="no-results">
+            No supervisors found matching your search criteria.
         </div>
 
         <div id="searchResults">
-            <div class="supervisor-list-header">
-                <span>• List of Supervisors</span>
-                <span>• Page 1-2 • Total</span>
-            </div>
-
-            <div class="supervisor-card">
-                <img src="/api/placeholder/60/60" alt="Supervisor" class="supervisor-image">
-                <div class="supervisor-info">
-                    <div class="supervisor-name">PROFESSOR MARIA DR SOMEPROF (SR) (HEAD ROLE)</div>
-                    <div class="supervisor-expertise">Head of Department, Software Engineering, Artificial Intelligence</div>
-                    <div class="field-title">Field FYP Titles:</div>
-                    <div class="field-value">• STUDENT PROJECT MANAGEMENT SYSTEM FOR UKBA</div>
-                    <div class="field-value">• SIMMERSAL PALM PLANTING SYSTEM</div>
-                </div>
-                <button class="view-profile-btn" onclick="showCharts()">View Profile</button>
-            </div>
-
-            <div class="supervisor-card">
-                <img src="/api/placeholder/60/60" alt="Supervisor" class="supervisor-image">
-                <div class="supervisor-info">
-                    <div class="supervisor-name">DR SUSAN SMITH (EXPERT)</div>
-                    <div class="supervisor-expertise">Machine Learning, Text Processing</div>
-                    <div class="field-title">Field FYP Titles:</div>
-                    <div class="field-value">• FYP STUDENT SYSTEM FOR MOBILE APPLICATION</div>
-                    <div class="field-value">• CHATBOT X</div>
-                </div>
-                <button class="view-profile-btn" onclick="window.location.href='supervisor_profile.html'">View Profile</button>
+            <div id="supervisorCardContainer">
+                <!-- Supervisor cards will be dynamically inserted here -->
             </div>
         </div>
 
         <div id="chartsView" style="display: none;">
-            <div class="supervisor-card">
-                <img src="/api/placeholder/60/60" alt="Supervisor" class="supervisor-image">
-                <div class="supervisor-info">
-                    <div class="supervisor-name">PROFESSOR MARIA DR SOMEPROF (SR) (HEAD ROLE)</div>
-                    <div class="supervisor-expertise">Head of Department, Software Engineering, Artificial Intelligence</div>
-                    <div class="field-title">Field FYP Titles:</div>
-                    <div class="field-value">• STUDENT PROJECT MANAGEMENT SYSTEM FOR UKBA</div>
-                    <div class="field-value">• SIMMERSAL PALM PLANTING SYSTEM</div>
-                </div>
-                <button class="view-profile-btn" onclick="hideCharts()">Hide Charts</button>
+            <div id="selectedSupervisorProfile" class="supervisor-card">
+                <!-- Selected supervisor details -->
             </div>
 
             <div>Supervisors with the same area of expertise:</div>
@@ -256,172 +286,215 @@
                 </div>
             </div>
         </div>
-
-        <div id="supervisorListView" style="display: none;">
-            <h2>List of Supervisor</h2>
-            <table class="supervisor-list">
-                <thead>
-                    <tr>
-                        <th>Supervisor Name</th>
-                        <th>Area of Expertise</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr onclick="window.location.href='supervisor_profile.html'">
-                        <td>1. SMITH GAFFIAN BIN SOLIAMAN (DR)</td>
-                        <td>SOFTWARE ENGINEERING</td>
-                    </tr>
-                    <tr onclick="window.location.href='supervisor_profile.html'">
-                        <td>2. MUHAMMAD IZAD RAMLI (DR)</td>
-                        <td>IMAGE & SPEECH PROCESSING</td>
-                    </tr>
-                    <tr onclick="window.location.href='supervisor_profile.html'">
-                        <td>3. MUHAMMAD HANA KHAN (DR)</td>
-                        <td>MEDICAL IMAGING</td>
-                    </tr>
-                    <tr onclick="window.location.href='supervisor_profile.html'">
-                        <td>4. NABSIAH KY OMAR (ASSOC. PROF. DR)</td>
-                        <td>DATA VISUALIZATION, TEXT ANALYTICS</td>
-                    </tr>
-                    <tr onclick="window.location.href='supervisor_profile.html'">
-                        <td>5. NORZIAH BINTI SURYAN (ASSOC. PROF. DR)</td>
-                        <td>SPEECH PROCESSING, INFORMATION RETRIEVAL</td>
-                    </tr>
-                    <tr onclick="window.location.href='supervisor_profile.html'">
-                        <td>6. NORDIANGILANG BINTI KABARUDDIN (ASSOC. PROF. DR)</td>
-                        <td>COMPUTATIONAL INTELLIGENCE, EMOTION RECOGNITION</td>
-                    </tr>
-                    <tr onclick="window.location.href='supervisor_profile.html'">
-                        <td>7. PRASANNA A/P KANANATHAN (DR)</td>
-                        <td>LEARNING ANALYTICS, MULTIMEDIA EDUCATION</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div id="pastFYPView" style="display: none;">
-            <h2>Past FYP Titles</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Author</th>
-                        <th>Title</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr onclick="showAbstract()">
-                        <td>1. NURUL YUSOF HAZINA</td>
-                        <td>SMART INVENTORY MANAGEMENT SYSTEM IR VISUALIZATION</td>
-                    </tr>
-                    <tr>
-                        <td>2. NADIA IBRAHIM</td>
-                        <td>3D SCAN TUMOR IMAGE RECOGNITION USING CANN</td>
-                    </tr>
-                    <tr>
-                        <td>3. JAMALUL AKBAR KEVIN</td>
-                        <td>SPECIES RECOMMENDATION SYSTEM USING IMAGE RECOGNITION</td>
-                    </tr>
-                    <tr>
-                        <td>4. THARIP ABDULLAH</td>
-                        <td>PLANT DISEASE DIAGNOSIS ASSISTANT</td>
-                    </tr>
-                    <tr>
-                        <td>5. NURUL RUBAIYAH RIDZUAN</td>
-                        <td>DISABILITY TREATMENT CENTER MANAGEMENT SYSTEM</td>
-                    </tr>
-                    <tr>
-                        <td>6. JENNIFER COOPER</td>
-                        <td>ELECTRIC VEHICLE CHARGING STATION MANAGEMENT</td>
-                    </tr>
-                    <tr>
-                        <td>7. NABILAH HASMADY</td>
-                        <td>IMAGE RECOGNITION IN SKIN DISEASES</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div id="abstractView" style="display: none;">
-            <h2>Past FYP Titles</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Author</th>
-                        <th>Title</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>1. ERWIN HUDA ZULKEFLEEZ</td>
-                        <td>RELATED BUDGET 2024 DIAGRAM USING FACILE PACKING TECHNIQUE</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="abstract">
-                <strong>Abstract:</strong><br><br>
-                The project aims to achieve the issue of challenging presentation of Malaysia's budget data by proposing the packing diagram of budget visualization for better understanding spending distributions in the Malaysian Government's annual planning project. The present method involves a proper pack of effective budget data visualization that would serve to enhance the understandability of the system, thereby allowing impact of data visualization and to establish relationship between Government and public when showing impact of data in specific events. The project is designed to tackle multiple issues in the system, that would include data visualization, structure, functions and overall efficiency. The goal is to create a simple user interface that effectively displays structured data representations. The project is going to review and analyze different visualization studies, taking into consideration the Malaysia budget 2024 facile worksheet and diagram in a more diverse flow.
-            </div>
-        </div>
     </div>
 
     <script>
         const searchInput = document.getElementById('searchInput');
+        const supervisorCardContainer = document.getElementById('supervisorCardContainer');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const noResults = document.getElementById('noResults');
+        const recentSearchesContainer = document.getElementById('recentSearches');
+        const mostSearchedContainer = document.getElementById('mostSearched');
         
-        searchInput.addEventListener('keyup', function(event) {
-            if (event.key === 'Enter') {
-                const query = searchInput.value.toLowerCase();
-                if (query.includes('supervisor') || query === '') {
-                    window.location.href = 'supervisor_list.html';
-                } else if (query.includes('fyp') || query.includes('titles')) {
-                    window.location.href = 'past_fyp.html';
-                } else {
-                    // Show normal search results
-                    document.getElementById('searchResults').style.display = 'block';
-                    document.getElementById('chartsView').style.display = 'none';
-                    document.getElementById('supervisorListView').style.display = 'none';
-                    document.getElementById('pastFYPView').style.display = 'none';
-                    document.getElementById('abstractView').style.display = 'none';
-                }
+        // Local storage keys
+        const RECENT_SEARCHES_KEY = 'recentSearches';
+        const SEARCH_COUNTS_KEY = 'searchCounts';
+        
+        // Initialize from local storage or defaults
+        function initializeSearchData() {
+            let recentSearches = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
+            let searchCounts = JSON.parse(localStorage.getItem(SEARCH_COUNTS_KEY) || '{}');
+            
+            // Populate sample data if empty
+            if (recentSearches.length === 0) {
+                recentSearches = ['Machine Learning', 'Image Processing', 'Data Mining'];
+                localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recentSearches));
             }
-        });
-
-        function showCharts() {
-            document.getElementById('searchResults').style.display = 'none';
-            document.getElementById('chartsView').style.display = 'block';
-            document.getElementById('supervisorListView').style.display = 'none';
-            document.getElementById('pastFYPView').style.display = 'none';
-            document.getElementById('abstractView').style.display = 'none';
+            
+            if (Object.keys(searchCounts).length === 0) {
+                searchCounts = {
+                    'Artificial Intelligence': 24,
+                    'Machine Learning': 19,
+                    'Computer Vision': 15,
+                    'Natural Language Processing': 12,
+                    'Deep Learning': 10
+                };
+                localStorage.setItem(SEARCH_COUNTS_KEY, JSON.stringify(searchCounts));
+            }
+            
+            displaySearchTrends(recentSearches, searchCounts);
         }
-
+        
+        // Display recent and most searched terms
+        function displaySearchTrends(recentSearches, searchCounts) {
+            // Clear containers
+            recentSearchesContainer.innerHTML = '';
+            mostSearchedContainer.innerHTML = '';
+            
+            // Display recent searches (most recent first, limit to 5)
+            recentSearches.slice(0, 5).forEach(term => {
+                const tag = createSearchTag(term);
+                recentSearchesContainer.appendChild(tag);
+            });
+            
+            // Sort search counts and display top 5
+            const sortedSearches = Object.entries(searchCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+                
+            sortedSearches.forEach(([term, count]) => {
+                const tag = createSearchTag(term);
+                mostSearchedContainer.appendChild(tag);
+            });
+        }
+        
+        // Create a search tag element
+        function createSearchTag(term) {
+            const tag = document.createElement('div');
+            tag.className = 'trend-tag';
+            tag.textContent = term;
+            tag.addEventListener('click', function() {
+                searchInput.value = term;
+                searchSupervisors(term);
+                updateSearchHistory(term);
+            });
+            return tag;
+        }
+        
+        // Update search history when a new search is performed
+        function updateSearchHistory(query) {
+            // Update recent searches
+            let recentSearches = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
+            
+            // Remove if already exists
+            recentSearches = recentSearches.filter(term => term !== query);
+            
+            // Add to beginning of array
+            recentSearches.unshift(query);
+            
+            // Keep only most recent 10
+            recentSearches = recentSearches.slice(0, 10);
+            
+            // Update local storage
+            localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recentSearches));
+            
+            // Update search counts
+            let searchCounts = JSON.parse(localStorage.getItem(SEARCH_COUNTS_KEY) || '{}');
+            searchCounts[query] = (searchCounts[query] || 0) + 1;
+            localStorage.setItem(SEARCH_COUNTS_KEY, JSON.stringify(searchCounts));
+            
+            // Refresh display
+            displaySearchTrends(recentSearches, searchCounts);
+        }
+        
+        // Function to create a supervisor card element
+        function createSupervisorCard(supervisor) {
+            const card = document.createElement('div');
+            card.className = 'supervisor-card';
+            
+            // Calculate similarity percentage for display
+            const similarityPercentage = (supervisor.similarity * 100).toFixed(1);
+            
+            // Generate image URL - use supervisor's name for the image file
+            // Convert supervisor name to a filename by replacing spaces with underscores
+            const imageFilename = `${supervisor.supervisor_name.replace(/\s+/g, '_')}.jpg`;
+            const imageUrl = `/sv_pictures/${imageFilename}`;
+            
+            card.innerHTML = `
+                <img src="${imageUrl}" alt="Supervisor" class="supervisor-image">
+                <div class="supervisor-info">
+                    <div class="supervisor-name">${supervisor.supervisor_name}</div>
+                    <div class="supervisor-expertise">${supervisor.expertise}</div>
+                    <div class="similarity-score">Match: ${similarityPercentage}%</div>
+                    <div class="key-terms">Key terms: ${supervisor.key_terms}</div>
+                </div>
+                <button class="view-profile-btn" onclick="viewSupervisorProfile(${supervisor.supervisor_id})">View Full Profile</button>
+            `;
+            
+            return card;
+        }
+        
+        // Function to view a specific supervisor's profile
+        function viewSupervisorProfile(supervisorId) {
+            // Redirect to the supervisor profile page with the ID as a parameter
+            window.location.href = `supervisor_profile.html?id=${supervisorId}`;
+        }
+        
+        // Function to search for supervisors using the API
+        function searchSupervisors(query) {
+            // Show loading indicator
+            loadingIndicator.style.display = 'block';
+            supervisorCardContainer.innerHTML = '';
+            noResults.style.display = 'none';
+            
+            // Make API request
+            fetch(`/api/search_supervisors?query=${encodeURIComponent(query)}&min_score=0.1&top_n=10`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Search failed');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Hide loading indicator
+                    loadingIndicator.style.display = 'none';
+                    
+                    // Check if results were found
+                    if (data.results && data.results.length > 0) {
+                        // Create and append supervisor cards
+                        data.results.forEach(supervisor => {
+                            const card = createSupervisorCard(supervisor);
+                            supervisorCardContainer.appendChild(card);
+                        });
+                    } else {
+                        // Show no results message
+                        noResults.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Search error:', error);
+                    loadingIndicator.style.display = 'none';
+                    noResults.style.display = 'block';
+                    noResults.textContent = 'An error occurred while searching. Please try again.';
+                });
+        }
+        
         function hideCharts() {
             document.getElementById('searchResults').style.display = 'block';
             document.getElementById('chartsView').style.display = 'none';
         }
-
-        function showSupervisorList() {
-            document.getElementById('searchResults').style.display = 'none';
-            document.getElementById('chartsView').style.display = 'none';
-            document.getElementById('supervisorListView').style.display = 'block';
-            document.getElementById('pastFYPView').style.display = 'none';
-            document.getElementById('abstractView').style.display = 'none';
-        }
-
-        function showPastFYP() {
-            document.getElementById('searchResults').style.display = 'none';
-            document.getElementById('chartsView').style.display = 'none';
-            document.getElementById('supervisorListView').style.display = 'none';
-            document.getElementById('pastFYPView').style.display = 'block';
-            document.getElementById('abstractView').style.display = 'none';
-        }
-
-        function showAbstract() {
-            document.getElementById('searchResults').style.display = 'none';
-            document.getElementById('chartsView').style.display = 'none';
-            document.getElementById('supervisorListView').style.display = 'none';
-            document.getElementById('pastFYPView').style.display = 'none';
-            document.getElementById('abstractView').style.display = 'block';
-        }
+        
+        // Initialize search data and trends on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSearchData();
+            
+            // Add event listener for search input
+            searchInput.addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    const query = searchInput.value.trim();
+                    
+                    if (query === '') {
+                        return; // Don't search on empty query
+                    }
+                    
+                    if (query.toLowerCase().includes('supervisor list') || query.toLowerCase().includes('all supervisors')) {
+                        window.location.href = 'supervisor_list.html';
+                    } else if (query.toLowerCase().includes('fyp') || query.toLowerCase().includes('past titles')) {
+                        window.location.href = 'past_fyp.html';
+                    } else {
+                        // Show search results view
+                        document.getElementById('searchResults').style.display = 'block';
+                        document.getElementById('chartsView').style.display = 'none';
+                        
+                        // Perform search
+                        searchSupervisors(query);
+                        
+                        // Update search history
+                        updateSearchHistory(query);
+                    }
+                }
+            });
+        });
     </script>
 </body>
 </html>
