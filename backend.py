@@ -35,6 +35,17 @@ def initialize_db():
         StdEmail VARCHAR(100) UNIQUE NOT NULL
     )
     ''')
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS supervisor_views (
+        StudentID INT(11) NOT NULL,
+        SupervisorID INT(11) NOT NULL,
+        view_count INT DEFAULT 1,
+        last_viewed DATETIME,
+        PRIMARY KEY (StudentID, SupervisorID),
+        FOREIGN KEY (StudentID) REFERENCES student(StudentID),
+        FOREIGN KEY (SupervisorID) REFERENCES supervisor(SupervisorID)
+    )
+    ''')    
     conn.commit()
     cursor.close()
     conn.close()
@@ -189,6 +200,10 @@ def supervisor_profile():
 def get_supervisor(supervisor_id):
     if 'username' not in session:
         return jsonify({"error": "Unauthorized"}), 401
+    
+    # Log this view
+    if 'user_id' in session:
+        log_supervisor_view(session['user_id'], supervisor_id)    
         
     conn, cursor = get_db_connection()
     try:
@@ -315,6 +330,104 @@ def get_student_email():
     finally:
         cursor.close()
         conn.close()
+        
+def log_supervisor_view(student_id, supervisor_id):
+    conn, cursor = get_db_connection()
+    try:
+        # Check if view exists
+        cursor.execute("""
+            SELECT * FROM supervisor_views 
+            WHERE StudentID = %s AND SupervisorID = %s
+        """, (student_id, supervisor_id))
+        
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Update existing view count and timestamp
+            cursor.execute("""
+                UPDATE supervisor_views 
+                SET view_count = view_count + 1, last_viewed = NOW() 
+                WHERE StudentID = %s AND SupervisorID = %s
+            """, (student_id, supervisor_id))
+        else:
+            # Insert new view
+            cursor.execute("""
+                INSERT INTO supervisor_views (StudentID, SupervisorID, view_count, last_viewed)
+                VALUES (%s, %s, 1, NOW())
+            """, (student_id, supervisor_id))
+            
+        conn.commit()
+    except mysql.connector.Error as err:
+        print(f"Database error: {err}")
+    finally:
+        cursor.close()
+        conn.close()
 
+@app.route('/api/student_supervisor_history', methods=['GET'])
+def get_supervisor_history():
+    if 'username' not in session or 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+            
+    conn, cursor = get_db_connection()
+    try:
+        # Get recently viewed supervisors
+        cursor.execute("""
+            SELECT sv.view_count, sv.last_viewed, s.SupervisorID, s.SvName 
+            FROM supervisor_views sv
+            JOIN supervisor s ON sv.SupervisorID = s.SupervisorID
+            WHERE sv.StudentID = %s
+            ORDER BY sv.last_viewed DESC
+            LIMIT 5
+        """, (session['user_id'],))
+            
+        recent = cursor.fetchall()
+            
+        # Get most viewed supervisors
+        cursor.execute("""
+            SELECT sv.view_count, sv.last_viewed, s.SupervisorID, s.SvName 
+            FROM supervisor_views sv
+            JOIN supervisor s ON sv.SupervisorID = s.SupervisorID
+            WHERE sv.StudentID = %s
+            ORDER BY sv.view_count DESC, sv.last_viewed DESC
+            LIMIT 5
+        """, (session['user_id'],))
+            
+        most_viewed = cursor.fetchall()
+            
+        return jsonify({
+            "recent": recent,
+            "most_viewed": most_viewed
+        })
+    except mysql.connector.Error as err:
+        print(f"Database error: {err}")
+        return jsonify({"error": str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/api/supervisor_fyp/<int:supervisor_id>', methods=['GET'])
+def get_supervisor_fyp(supervisor_id):
+    if 'username' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    conn, cursor = get_db_connection()
+    try:
+        # Get FYP projects supervised by this supervisor
+        cursor.execute("""
+            SELECT p.ProjectID, p.Title, p.Author, p.Abstract, p.Year
+            FROM past_fyp p
+            WHERE p.SupervisorID = %s
+            ORDER BY p.Year DESC, p.Title
+        """, (supervisor_id,))
+        
+        projects = cursor.fetchall()
+        return jsonify({"projects": projects})
+    except mysql.connector.Error as err:
+        print(f"Database error: {err}")
+        return jsonify({"error": str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()        
+    
 if __name__ == '__main__':
     app.run(debug=True)

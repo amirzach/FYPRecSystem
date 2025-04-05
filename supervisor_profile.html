@@ -213,14 +213,16 @@
             
             // Setup search functionality
             const searchInput = document.getElementById('searchInput');
-            searchInput.addEventListener('keyup', function(event) {
-                if (event.key === 'Enter') {
-                    const query = searchInput.value.trim();
-                    if (query) {
-                        window.location.href = `search_results.html?query=${encodeURIComponent(query)}`;
+            if (searchInput) {
+                searchInput.addEventListener('keyup', function(event) {
+                    if (event.key === 'Enter') {
+                        const query = searchInput.value.trim();
+                        if (query) {
+                            window.location.href = `search_results.html?query=${encodeURIComponent(query)}`;
+                        }
                     }
-                }
-            });
+                });
+            }
         });
         
         async function fetchSupervisorProfile(supervisorId) {
@@ -233,11 +235,15 @@
                 
                 const supervisor = await response.json();
                 
+                // Fetch past FYP projects supervised by this supervisor
+                const fypResponse = await fetch(`/api/supervisor_fyp/${supervisorId}`);
+                const fypData = await fypResponse.json();
+                
                 // Once we have the supervisor data, find similar supervisors
                 const similarSupervisors = await fetchSimilarSupervisors(supervisor.expertise_areas);
                 
                 // Render the profile
-                renderProfile(supervisor, similarSupervisors);
+                renderProfile(supervisor, similarSupervisors, fypData.projects);
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -265,7 +271,7 @@
             }
         }
         
-        function renderProfile(supervisor, similarSupervisors) {
+        function renderProfile(supervisor, similarSupervisors, fypProjects) {
             // Generate image URL - use supervisor's name for the image file
             // Convert supervisor name to a filename by replacing spaces with underscores
             const imageFilename = `${supervisor.SvName.replace(/\s+/g, '_')}.jpg`;
@@ -301,14 +307,7 @@
 
                 <div class="section">
                     <div class="section-title">Past FYP Projects Supervised</div>
-                    <div class="fyp-item">
-                        <div class="fyp-title">FYP STUDENT SYSTEM FOR MOBILE APPLICATION</div>
-                        <div class="fyp-description">A comprehensive mobile application designed to streamline FYP management, including project submission, progress tracking, and feedback mechanisms.</div>
-                    </div>
-                    <div class="fyp-item">
-                        <div class="fyp-title">CHATBOT X</div>
-                        <div class="fyp-description">An intelligent chatbot system leveraging NLP and machine learning to provide academic guidance and support to students.</div>
-                    </div>
+                    ${renderFypProjects(fypProjects)}
                 </div>
             `;
             
@@ -316,6 +315,22 @@
             
             // Create expertise chart
             createExpertiseChart(expertiseAreas);
+        }
+        
+        function renderFypProjects(projects) {
+            if (!projects || projects.length === 0) {
+                return '<p>No past FYP projects found for this supervisor.</p>';
+            }
+            
+            return projects.map(project => `
+                <div class="fyp-item">
+                    <div class="fyp-title">${project.Title}</div>
+                    <div class="fyp-description">${project.Abstract || 'No abstract available.'}</div>
+                    <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                        Student: ${project.Author} | Year: ${project.Year}
+                    </div>
+                </div>
+            `).join('');
         }
         
         function renderSimilarSupervisors(supervisors, currentId) {
