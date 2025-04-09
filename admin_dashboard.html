@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - FYP Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e6e2d3;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background-color: #e6e2d3;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #c7c4b8;
+        }
+        .logo {
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .nav-links {
+            display: flex;
+        }
+        .nav-links a {
+            margin-left: 20px;
+            text-decoration: none;
+            color: #333;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .dashboard-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .dashboard-title h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .add-button {
+            background-color: #b8b19f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .add-button:hover {
+            background-color: #a09b8c;
+        }
+        .add-button i {
+            margin-right: 5px;
+        }
+        .search-container {
+            margin-bottom: 15px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .action-buttons {
+            display: flex;
+        }
+        .btn {
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        .btn-info {
+            background-color: #b8b19f;
+            color: white;
+        }
+        .btn-danger {
+            background-color: #d9534f;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.8;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 80%;
+            max-width: 700px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .modal-title {
+            margin: 0;
+            font-size: 20px;
+        }
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .form-row {
+            display: flex;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+        .form-group {
+            flex: 1;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+        }
+        .form-textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            resize: vertical;
+            min-height: 100px;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-primary {
+            background-color: #b8b19f;
+            color: white;
+        }
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">FYP MANAGEMENT SYSTEM</div>
+        <div class="nav-links">
+            <a href="/admin/dashboard">Projects</a>
+            <a href="/admin/supervisors">Supervisors</a>
+            <a href="/admin/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="dashboard-card">
+            <div class="dashboard-header">
+                <div class="dashboard-title">
+                    <h1>Past FYP Project Management</h1>
+                </div>
+                <button class="add-button" id="addNewBtn">
+                    <i class="fas fa-plus"></i> Add New Project
+                </button>
+            </div>
+            
+            <div class="search-container">
+                <input type="text" class="search-input" id="searchInput" placeholder="Search projects...">
+            </div>
+            
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Author</th>
+                            <th>Year</th>
+                            <th>Supervisor</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projectTableBody">
+                        <!-- Projects will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Project Modal -->
+    <div id="projectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Add New Project</h3>
+                <button class="close-button" id="closeProjectModal">&times;</button>
+            </div>
+            <form id="projectForm">
+                <input type="hidden" id="projectId">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label class="form-label" for="title">Title</label>
+                        <input type="text" class="form-control" id="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="year">Year</label>
+                        <input type="number" class="form-control" id="year" min="2000" max="2100" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="author">Author</label>
+                        <input type="text" class="form-control" id="author" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="supervisor">Supervisor</label>
+                        <select class="form-select" id="supervisor" required>
+                            <option value="">Select Supervisor</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="abstract">Abstract</label>
+                    <textarea class="form-textarea" id="abstract" rows="5"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelProjectBtn">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveProjectBtn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Delete</h3>
+                <button class="close-button" id="closeDeleteModal">&times;</button>
+            </div>
+            <p>Are you sure you want to delete this project? This action cannot be undone.</p>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script>
+        // Global variables
+        let projects = [];
+        let supervisors = [];
+        let deleteProjectId = null;
+        
+        // DOM Elements
+        const projectTableBody = document.getElementById('projectTableBody');
+        const projectModal = document.getElementById('projectModal');
+        const deleteModal = document.getElementById('deleteModal');
+        const projectForm = document.getElementById('projectForm');
+        const searchInput = document.getElementById('searchInput');
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProjects();
+            loadSupervisors();
+            
+            // Add event listeners
+            document.getElementById('addNewBtn').addEventListener('click', showAddModal);
+            document.getElementById('saveProjectBtn').addEventListener('click', saveProject);
+            document.getElementById('confirmDeleteBtn').addEventListener('click', deleteProject);
+            document.getElementById('closeProjectModal').addEventListener('click', () => projectModal.style.display = 'none');
+            document.getElementById('cancelProjectBtn').addEventListener('click', () => projectModal.style.display = 'none');
+            document.getElementById('closeDeleteModal').addEventListener('click', () => deleteModal.style.display = 'none');
+            document.getElementById('cancelDeleteBtn').addEventListener('click', () => deleteModal.style.display = 'none');
+            searchInput.addEventListener('input', filterProjects);
+            
+            // Close modal when clicking outside
+            window.addEventListener('click', function(event) {
+                if (event.target === projectModal) {
+                    projectModal.style.display = 'none';
+                }
+                if (event.target === deleteModal) {
+                    deleteModal.style.display = 'none';
+                }
+            });
+        });
+        
+        // Load all projects
+        async function loadProjects() {
+            try {
+                const response = await fetch('/api/admin/fyp');
+                const data = await response.json();
+                
+                if (data.projects) {
+                    projects = data.projects;
+                    renderProjects(projects);
+                }
+            } catch (error) {
+                console.error('Error loading projects:', error);
+                alert('Failed to load projects. Please try again.');
+            }
+        }
+        
+        // Load all supervisors for dropdown
+        async function loadSupervisors() {
+            try {
+                const response = await fetch('/api/admin/supervisors');
+                const data = await response.json();
+                
+                if (data.supervisors) {
+                    supervisors = data.supervisors;
+                    const supervisorSelect = document.getElementById('supervisor');
+                    
+                    // Clear existing options except the first one
+                    while (supervisorSelect.options.length > 1) {
+                        supervisorSelect.remove(1);
+                    }
+                    
+                    // Add supervisor options
+                    supervisors.forEach(supervisor => {
+                        const option = document.createElement('option');
+                        option.value = supervisor.SupervisorID;
+                        option.textContent = supervisor.SvName;
+                        supervisorSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading supervisors:', error);
+                alert('Failed to load supervisors. Please try again.');
+            }
+        }
+        
+        // Render projects in table
+        function renderProjects(projectsList) {
+            projectTableBody.innerHTML = '';
+            
+            projectsList.forEach(project => {
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td>${project.ProjectID}</td>
+                    <td>${project.Title}</td>
+                    <td>${project.Author}</td>
+                    <td>${project.Year}</td>
+                    <td>${project.SupervisorName || 'N/A'}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn btn-info" onclick="showEditModal(${project.ProjectID})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger" onclick="showDeleteModal(${project.ProjectID})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                
+                projectTableBody.appendChild(row);
+            });
+        }
+        
+        // Filter projects based on search input
+        function filterProjects() {
+            const searchTerm = searchInput.value.toLowerCase();
+            
+            const filteredProjects = projects.filter(project => 
+                project.Title.toLowerCase().includes(searchTerm) ||
+                project.Author.toLowerCase().includes(searchTerm) ||
+                (project.Abstract && project.Abstract.toLowerCase().includes(searchTerm)) ||
+                project.Year.toString().includes(searchTerm) ||
+                (project.SupervisorName && project.SupervisorName.toLowerCase().includes(searchTerm))
+            );
+            
+            renderProjects(filteredProjects);
+        }
+        
+        // Show add modal
+        function showAddModal() {
+            document.getElementById('modalTitle').textContent = 'Add New Project';
+            document.getElementById('projectId').value = '';
+            projectForm.reset();
+            projectModal.style.display = 'block';
+        }
+        
+        // Show edit modal
+        async function showEditModal(projectId) {
+            try {
+                const response = await fetch(`/api/admin/fyp/${projectId}`);
+                const data = await response.json();
+                
+                if (data.project) {
+                    const project = data.project;
+                    
+                    document.getElementById('modalTitle').textContent = 'Edit Project';
+                    document.getElementById('projectId').value = project.ProjectID;
+                    document.getElementById('title').value = project.Title;
+                    document.getElementById('author').value = project.Author;
+                    document.getElementById('abstract').value = project.Abstract || '';
+                    document.getElementById('year').value = project.Year;
+                    document.getElementById('supervisor').value = project.SupervisorID;
+                    
+                    projectModal.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading project details:', error);
+                alert('Failed to load project details. Please try again.');
+            }
+        }
+        
+        // Show delete confirmation modal
+        function showDeleteModal(projectId) {
+            deleteProjectId = projectId;
+            deleteModal.style.display = 'block';
+        }
+        
+        // Save (create or update) project
+        async function saveProject() {
+            // Get form values
+            const projectId = document.getElementById('projectId').value;
+            const title = document.getElementById('title').value;
+            const author = document.getElementById('author').value;
+            const abstract = document.getElementById('abstract').value;
+            const year = document.getElementById('year').value;
+            const supervisorId = document.getElementById('supervisor').value;
+            
+            // Validate required fields
+            if (!title || !author || !year || !supervisorId) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+            
+            const projectData = {
+                Title: title,
+                Author: author,
+                Abstract: abstract,
+                Year: parseInt(year),
+                SupervisorID: parseInt(supervisorId)
+            };
+            
+            try {
+                let response;
+                
+                if (projectId) {
+                    // Update existing project
+                    response = await fetch(`/api/admin/fyp/${projectId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(projectData)
+                    });
+                } else {
+                    // Create new project
+                    response = await fetch('/api/admin/fyp', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(projectData)
+                    });
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    projectModal.style.display = 'none';
+                    loadProjects(); // Reload the projects list
+                } else {
+                    alert(`Error: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error saving project:', error);
+                alert('Failed to save project. Please try again.');
+            }
+        }
+        
+        // Delete project
+        async function deleteProject() {
+            if (!deleteProjectId) return;
+            
+            try {
+                const response = await fetch(`/api/admin/fyp/${deleteProjectId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    deleteModal.style.display = 'none';
+                    loadProjects(); // Reload the projects list
+                } else {
+                    alert(`Error: ${data.error || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error('Error deleting project:', error);
+                alert('Failed to delete project. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html>
