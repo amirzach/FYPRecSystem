@@ -442,7 +442,7 @@
             const supervisorData = {
                 SvName: name,
                 SvEmail: email,
-                expertise: expertise
+                expertise: expertise || '' // Ensure expertise is never undefined
             };
             
             try {

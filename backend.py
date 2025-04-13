@@ -123,8 +123,18 @@ def login():
     username = request.form.get('username')
     password = request.form.get('password')
     
+    # First check if it's an admin login
     conn, cursor = get_db_connection()
     try:
+        cursor.execute("SELECT * FROM admin WHERE AdName = %s", (username,))
+        admin = cursor.fetchone()
+        
+        if admin and admin['AdPassword'] == password:
+            session['admin_username'] = username
+            session['admin_id'] = admin['AdminID']
+            return redirect(url_for('admin_dashboard'))
+        
+        # If not admin, check if it's a student
         cursor.execute("SELECT * FROM student WHERE StdName = %s", (username,))
         user = cursor.fetchone()
         
@@ -427,7 +437,414 @@ def get_supervisor_fyp(supervisor_id):
         return jsonify({"error": str(err)}), 500
     finally:
         cursor.close()
-        conn.close()        
+        conn.close()   
+
+@app.route('/admin/login', methods=['POST'])
+def admin_login():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    
+    conn, cursor = get_db_connection()
+    try:
+        cursor.execute("SELECT * FROM admin WHERE AdName = %s", (username,))
+        admin = cursor.fetchone()
+        
+        if admin and admin['AdPassword'] == password:
+            session['admin_username'] = username
+            session['admin_id'] = admin['AdminID']
+            return redirect(url_for('admin_dashboard'))
+        
+        error_message = "Invalid admin credentials. Please try again."
+        return render_template('index.html', error=error_message)
+    except mysql.connector.Error as err:
+        print(f"Database error: {err}")
+        error_message = "Login failed. Please try again later."
+        return render_template('index.html', error=error_message)
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    if 'admin_username' not in session:
+        return redirect(url_for('index'))
+    return render_template('admin_dashboard.html')
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_username', None)
+    session.pop('admin_id', None)
+    return redirect(url_for('index'))
+
+@app.route('/api/admin/fyp', methods=['GET', 'POST'])
+def admin_fyp():
+    if 'admin_username' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    if request.method == 'GET':
+        conn, cursor = get_db_connection()
+        try:
+            cursor.execute("""
+                SELECT p.*, s.SvName as SupervisorName
+                FROM past_fyp p
+                LEFT JOIN supervisor s ON p.SupervisorID = s.SupervisorID
+                ORDER BY p.Year DESC, p.Title
+            """)
+            projects = cursor.fetchall()
+            return jsonify({"projects": projects})
+        except mysql.connector.Error as err:
+            print(f"Database error: {err}")
+            return jsonify({"error": str(err)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+    
+    elif request.method == 'POST':
+        data = request.json
+        conn, cursor = get_db_connection()
+        try:
+            # First get the maximum project ID
+            cursor.execute("SELECT MAX(ProjectID) as max_id FROM past_fyp")
+            result = cursor.fetchone()
+            next_id = 1  # Default if no projects exist
+            if result and result['max_id'] is not None:
+                next_id = result['max_id'] + 1
+            
+            # Now insert with the next sequential ID
+            cursor.execute("""
+                INSERT INTO past_fyp (ProjectID, Title, Author, Abstract, Year, SupervisorID)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (
+                next_id,
+                data.get('Title'),
+                data.get('Author'),
+                data.get('Abstract'),
+                data.get('Year'),
+                data.get('SupervisorID')
+            ))
+            conn.commit()
+            return jsonify({"success": True, "message": "Project added successfully", "projectId": next_id})
+        except mysql.connector.Error as err:
+            print(f"Database error: {err}")
+            return jsonify({"success": False, "error": str(err)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+
+@app.route('/api/admin/fyp/<int:project_id>', methods=['GET', 'PUT', 'DELETE'])
+def admin_fyp_detail(project_id):
+    if 'admin_username' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    conn, cursor = get_db_connection()
+    
+    if request.method == 'GET':
+        try:
+            cursor.execute("""
+                SELECT * FROM past_fyp WHERE ProjectID = %s
+            """, (project_id,))
+            project = cursor.fetchone()
+            
+            if not project:
+                return jsonify({"error": "Project not found"}), 404
+                
+            return jsonify({"project": project})
+        except mysql.connector.Error as err:
+            print(f"Database error: {err}")
+            return jsonify({"error": str(err)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+    
+    elif request.method == 'PUT':
+        data = request.json
+        try:
+            cursor.execute("""
+                UPDATE past_fyp
+                SET Title = %s, Author = %s, Abstract = %s, Year = %s, SupervisorID = %s
+                WHERE ProjectID = %s
+            """, (
+                data.get('Title'),
+                data.get('Author'),
+                data.get('Abstract'),
+                data.get('Year'),
+                data.get('SupervisorID'),
+                project_id
+            ))
+            conn.commit()
+            
+            if cursor.rowcount == 0:
+                return jsonify({"success": False, "error": "Project not found"}), 404
+                
+            return jsonify({"success": True, "message": "Project updated successfully"})
+        except mysql.connector.Error as err:
+            print(f"Database error: {err}")
+            return jsonify({"success": False, "error": str(err)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+    
+    elif request.method == 'DELETE':
+        try:
+            cursor.execute("DELETE FROM past_fyp WHERE ProjectID = %s", (project_id,))
+            conn.commit()
+            
+            if cursor.rowcount == 0:
+                return jsonify({"success": False, "error": "Project not found"}), 404
+                
+            return jsonify({"success": True, "message": "Project deleted successfully"})
+        except mysql.connector.Error as err:
+            print(f"Database error: {err}")
+            return jsonify({"success": False, "error": str(err)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+            
+@app.route('/api/admin/supervisors', methods=['GET', 'POST'])
+def admin_supervisors():
+    if 'admin_username' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    if request.method == 'GET':
+        conn, cursor = get_db_connection()
+        try:
+            cursor.execute("""
+                SELECT s.SupervisorID, s.SvName, s.SvEmail, 
+                       GROUP_CONCAT(DISTINCT e.Expertise SEPARATOR ', ') as expertise_areas
+                FROM supervisor s
+                LEFT JOIN expertise e ON s.SupervisorID = e.SupervisorID
+                GROUP BY s.SupervisorID, s.SvName, s.SvEmail
+                ORDER BY s.SvName
+            """)
+            supervisors = cursor.fetchall()
+            
+            # Ensure no null values for expertise
+            for supervisor in supervisors:
+                if supervisor['expertise_areas'] is None:
+                    supervisor['expertise_areas'] = ''
+                    
+            return jsonify({"supervisors": supervisors})
+        except mysql.connector.Error as err:
+            print(f"Database error: {err}")
+            return jsonify({"error": str(err)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+    
+    elif request.method == 'POST':
+        data = request.json
+        conn, cursor = get_db_connection()
+        try:
+            # Start transaction
+            conn.start_transaction()
+            
+            # Get the maximum SupervisorID to ensure we continue numbering properly
+            cursor.execute("SELECT MAX(SupervisorID) as max_id FROM supervisor")
+            result = cursor.fetchone()
+            max_supervisor_id = result['max_id'] if result['max_id'] is not None else 0
+            new_supervisor_id = max_supervisor_id + 1
+            
+            # Insert with explicit SupervisorID to ensure continuous numbering
+            cursor.execute("""
+                INSERT INTO supervisor (SupervisorID, SvName, SvEmail)
+                VALUES (%s, %s, %s)
+            """, (
+                new_supervisor_id,
+                data.get('SvName'),
+                data.get('SvEmail')
+            ))
+            supervisor_id = new_supervisor_id
+            
+            # Insert expertise areas if provided
+            if 'expertise' in data and data['expertise']:
+                expertise_list = [x.strip() for x in data['expertise'].split(',') if x.strip()]
+                
+                # Get the structure of the expertise table to understand its primary key
+                cursor.execute("DESCRIBE expertise")
+                table_structure = cursor.fetchall()
+                print("Expertise table structure:", table_structure)
+                
+                # Check if ExpertiseID is an auto-increment field
+                has_auto_increment_id = False
+                for column in table_structure:
+                    if column.get('Field') == 'ExpertiseID' and 'auto_increment' in column.get('Extra', '').lower():
+                        has_auto_increment_id = True
+                        break
+                
+                if has_auto_increment_id:
+                    # If table has auto-increment primary key, don't specify it
+                    for expertise in expertise_list:
+                        cursor.execute("""
+                            INSERT INTO expertise (SupervisorID, Expertise)
+                            VALUES (%s, %s)
+                        """, (supervisor_id, expertise))
+                else:
+                    # Generate unique IDs for expertise entries
+                    # First get the maximum ExpertiseID
+                    cursor.execute("SELECT MAX(ExpertiseID) as max_id FROM expertise")
+                    result = cursor.fetchone()
+                    max_id = result['max_id'] if result['max_id'] is not None else 0
+                    
+                    # Insert with explicit ExpertiseID 
+                    for i, expertise in enumerate(expertise_list):
+                        new_id = max_id + i + 1
+                        cursor.execute("""
+                            INSERT INTO expertise (ExpertiseID, SupervisorID, Expertise)
+                            VALUES (%s, %s, %s)
+                        """, (new_id, supervisor_id, expertise))
+            
+            conn.commit()
+            return jsonify({"success": True, "message": "Supervisor added successfully"})
+        except mysql.connector.Error as err:
+            conn.rollback()
+            print(f"Database error: {err}")
+            return jsonify({"success": False, "error": str(err)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+
+@app.route('/api/admin/supervisors/<int:supervisor_id>', methods=['GET', 'PUT', 'DELETE'])
+def admin_supervisor_detail(supervisor_id):
+    if 'admin_username' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    conn, cursor = get_db_connection()
+    
+    if request.method == 'GET':
+        try:
+            cursor.execute("""
+                SELECT s.SupervisorID, s.SvName, s.SvEmail, 
+                       GROUP_CONCAT(e.Expertise SEPARATOR ', ') as expertise_areas
+                FROM supervisor s
+                LEFT JOIN expertise e ON s.SupervisorID = e.SupervisorID
+                WHERE s.SupervisorID = %s
+                GROUP BY s.SupervisorID, s.SvName, s.SvEmail
+            """, (supervisor_id,))
+            supervisor = cursor.fetchone()
+            
+            if not supervisor:
+                return jsonify({"error": "Supervisor not found"}), 404
+                
+            return jsonify({"supervisor": supervisor})
+        except mysql.connector.Error as err:
+            print(f"Database error: {err}")
+            return jsonify({"error": str(err)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+    
+    elif request.method == 'PUT':
+        data = request.json
+        try:
+            # Start transaction
+            conn.start_transaction()
+            
+            # Update supervisor basic info
+            cursor.execute("""
+                UPDATE supervisor
+                SET SvName = %s, SvEmail = %s
+                WHERE SupervisorID = %s
+            """, (
+                data.get('SvName'),
+                data.get('SvEmail'),
+                supervisor_id
+            ))
+            
+            # Handle expertise areas
+            if 'expertise' in data:
+                # Delete existing expertise areas
+                cursor.execute("DELETE FROM expertise WHERE SupervisorID = %s", (supervisor_id,))
+                
+                # Insert new expertise areas
+                if data['expertise'].strip():
+                    expertise_list = [x.strip() for x in data['expertise'].split(',') if x.strip()]
+                    
+                    # Get the structure of the expertise table
+                    cursor.execute("DESCRIBE expertise")
+                    table_structure = cursor.fetchall()
+                    
+                    # Check if ExpertiseID is an auto-increment field
+                    has_auto_increment_id = False
+                    for column in table_structure:
+                        if column.get('Field') == 'ExpertiseID' and 'auto_increment' in column.get('Extra', '').lower():
+                            has_auto_increment_id = True
+                            break
+                    
+                    if has_auto_increment_id:
+                        # If table has auto-increment primary key, don't specify it
+                        for expertise in expertise_list:
+                            cursor.execute("""
+                                INSERT INTO expertise (SupervisorID, Expertise)
+                                VALUES (%s, %s)
+                            """, (supervisor_id, expertise))
+                    else:
+                        # Generate unique IDs for expertise entries
+                        # First get the maximum ExpertiseID
+                        cursor.execute("SELECT MAX(ExpertiseID) as max_id FROM expertise")
+                        result = cursor.fetchone()
+                        max_id = result['max_id'] if result['max_id'] is not None else 0
+                        
+                        # Insert with explicit ExpertiseID
+                        for i, expertise in enumerate(expertise_list):
+                            new_id = max_id + i + 1
+                            cursor.execute("""
+                                INSERT INTO expertise (ExpertiseID, SupervisorID, Expertise)
+                                VALUES (%s, %s, %s)
+                            """, (new_id, supervisor_id, expertise))
+            
+            conn.commit()
+            return jsonify({"success": True, "message": "Supervisor updated successfully"})
+        except mysql.connector.Error as err:
+            conn.rollback()
+            print(f"Database error: {err}")
+            return jsonify({"success": False, "error": str(err)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+    
+    elif request.method == 'DELETE':
+        try:
+            # Start transaction
+            conn.start_transaction()
+            
+            # First delete expertise areas (foreign key constraint)
+            cursor.execute("DELETE FROM expertise WHERE SupervisorID = %s", (supervisor_id,))
+            
+            # Delete supervisor views
+            cursor.execute("DELETE FROM supervisor_views WHERE SupervisorID = %s", (supervisor_id,))
+            
+            # Check if any FYP projects are using this supervisor
+            cursor.execute("SELECT COUNT(*) AS count FROM past_fyp WHERE SupervisorID = %s", (supervisor_id,))
+            result = cursor.fetchone()
+            
+            if result and result['count'] > 0:
+                conn.rollback()
+                return jsonify({
+                    "success": False, 
+                    "error": f"Cannot delete supervisor. {result['count']} FYP projects are assigned to this supervisor."
+                }), 400
+                
+            # Now delete the supervisor
+            cursor.execute("DELETE FROM supervisor WHERE SupervisorID = %s", (supervisor_id,))
+            conn.commit()
+            
+            if cursor.rowcount == 0:
+                return jsonify({"success": False, "error": "Supervisor not found"}), 404
+                
+            return jsonify({"success": True, "message": "Supervisor deleted successfully"})
+        except mysql.connector.Error as err:
+            conn.rollback()
+            print(f"Database error: {err}")
+            return jsonify({"success": False, "error": str(err)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+            
+@app.route('/admin/supervisors')
+def admin_supervisors_page():
+    if 'admin_username' not in session:
+        return redirect(url_for('index'))
+    return render_template('admin_supervisors.html')                          
     
 if __name__ == '__main__':
     app.run(debug=True)
