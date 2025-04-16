@@ -91,7 +91,7 @@ function createSupervisorCard(supervisor) {
     // Generate image URL - use supervisor's name for the image file
     // Convert supervisor name to a filename by replacing spaces with underscores
     const imageFilename = `${supervisor.supervisor_name.replace(/\s+/g, '_')}.jpg`;
-    const imageUrl = `/sv_pictures/${imageFilename}`;
+    const imageUrl = `static/SV PICTURE/${imageFilename}`;
     
     card.innerHTML = `
         <img src="${imageUrl}" alt="Supervisor" class="supervisor-image">

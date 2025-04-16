@@ -75,7 +75,7 @@ function renderProfile(supervisor, similarSupervisors, fypProjects) {
     // Generate image URL - use supervisor's name for the image file
     // Convert supervisor name to a filename by replacing spaces with underscores
     const imageFilename = `${supervisor.SvName.replace(/\s+/g, '_')}.jpg`;
-    const imageUrl = `/sv_pictures/${imageFilename}`;
+    const imageUrl = `static/SV PICTURE/${imageFilename}`;
     // Split expertise into array
     const expertiseAreas = supervisor.expertise_areas ? supervisor.expertise_areas.split(', ') : [];
     
