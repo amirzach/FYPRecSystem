@@ -6,58 +6,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Fetch student profile data
 function fetchStudentProfile() {
-    // First check if there's student data in the session
-    const studentName = "{{ session.get('username', '') }}";
-    const studentId = "{{ session.get('user_id', '') }}";
-    
-    if (studentName && studentId) {
-        // If data is available directly from session, use it
-        updateProfileWithSessionData(studentName, studentId);
-    } else {
-        // Otherwise make an API call to get the data
-        fetch('/api/student_profile')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch profile data');
-                }
-                return response.json();
-            })
-            .then(data => {
-                displayStudentProfile(data);
-            })
-            .catch(error => {
-                console.error('Error fetching student profile:', error);
-                document.getElementById('errorMessage').textContent = 
-                    'Failed to load profile data. Please try again later.';
-                document.getElementById('errorMessage').style.display = 'block';
-            });
-    }
-}
-
-// Update profile with session data and then fetch additional data
-function updateProfileWithSessionData(name, id) {
-    // Update the visible fields with the data we have
-    document.getElementById('studentName').textContent = name;
-    document.getElementById('studentId').textContent = 'Student ID: ' + id;
-    
-    // Set profile initial
-    const initial = name.charAt(0).toUpperCase();
-    document.getElementById('profileInitial').textContent = initial;
-    
-    // Then fetch the rest of the data (email) from the database
-    fetch(`/api/student_email?id=${id}`)
+    fetch('/api/student_profile')
         .then(response => {
             if (!response.ok) {
-                throw new Error('Failed to fetch email data');
+                throw new Error('Failed to fetch profile data');
             }
             return response.json();
         })
         .then(data => {
-            document.getElementById('studentEmail').textContent = data.email || 'Not available';
+            displayStudentProfile(data);
         })
         .catch(error => {
-            console.error('Error fetching student email:', error);
-            document.getElementById('studentEmail').textContent = 'Email not available';
+            console.error('Error fetching student profile:', error);
+            document.getElementById('errorMessage').textContent = 
+                'Failed to load profile data. Please try again later.';
+            document.getElementById('errorMessage').style.display = 'block';
         });
 }
 
