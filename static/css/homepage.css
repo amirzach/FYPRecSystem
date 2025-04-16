@@ -1,0 +1,201 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #e6e2d3;
+    margin: 0;
+    padding: 0;
+}
+.header {
+    background-color: #e6e2d3;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #c7c4b8;
+}
+.logo {
+    font-weight: bold;
+    font-size: 18px;
+}
+.nav-links {
+    display: flex;
+}
+.nav-links a {
+    margin-left: 20px;
+    text-decoration: none;
+    color: #333;
+}
+.container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 0 20px;
+}
+.search-container {
+    margin-bottom: 20px;
+    position: relative;
+}
+.search-container input {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+.search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.search-input {
+    padding-left: 35px !important;
+}
+.supervisor-list-header {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+.supervisor-card {
+    background-color: white;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+}
+.supervisor-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 4px;
+    margin-right: 15px;
+}
+.supervisor-info {
+    flex: 1;
+}
+.supervisor-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.supervisor-expertise {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+}
+.field-title {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 3px;
+}
+.field-value {
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+.view-profile-btn {
+    padding: 5px 10px;
+    background-color: #b8b19f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    align-self: flex-end;
+}
+.view-profile-btn:hover {
+    background-color: #a09c8b;
+}
+.similarity-score {
+    font-size: 12px;
+    color: #888;
+    margin-top: 5px;
+}
+.key-terms {
+    font-size: 12px;
+    color: #555;
+    margin-top: 8px;
+    font-style: italic;
+}
+.loading {
+    text-align: center;
+    padding: 20px;
+    display: none;
+}
+.no-results {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    display: none;
+}
+.quick-links {
+    background-color: white;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.quick-links h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #333;
+}
+.quick-links ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+.quick-links li {
+    margin-bottom: 8px;
+}
+.quick-links a {
+    text-decoration: none;
+    color: #666;
+    display: block;
+    padding: 5px 0;
+    transition: color 0.2s;
+}
+.quick-links a:hover {
+    color: #333;
+}
+.search-trends {
+    background-color: white;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.search-trends h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #333;
+}
+.trends-container {
+    display: flex;
+    justify-content: space-between;
+}
+.trend-column {
+    flex: 1;
+    margin-right: 15px;
+}
+.trend-column:last-child {
+    margin-right: 0;
+}
+.trend-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #555;
+}
+.trend-tags {
+    display: flex;
+    flex-wrap: wrap;
+}
+.trend-tag {
+    background-color: #f0ede2;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    margin-right: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.trend-tag:hover {
+    background-color: #e6e2d3;
+}

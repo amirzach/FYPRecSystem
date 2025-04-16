@@ -1,0 +1,148 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #e6e2d3;
+    margin: 0;
+    padding: 0;
+}
+.header {
+    background-color: #e6e2d3;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #c7c4b8;
+}
+.logo {
+    font-weight: bold;
+    font-size: 18px;
+}
+.nav-links {
+    display: flex;
+}
+.nav-links a {
+    margin-left: 20px;
+    text-decoration: none;
+    color: #333;
+}
+.container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 0 20px;
+}
+.profile-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.profile-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.profile-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: #b8b19f;
+    margin-right: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 36px;
+    color: white;
+}
+.profile-title {
+    flex: 1;
+}
+.profile-title h1 {
+    margin: 0 0 5px 0;
+    font-size: 24px;
+}
+.profile-title p {
+    margin: 0;
+    color: #666;
+}
+.profile-section {
+    margin-bottom: 20px;
+}
+.profile-section h2 {
+    font-size: 18px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+.profile-field {
+    margin-bottom: 10px;
+}
+.field-label {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.field-value {
+    color: #333;
+}
+.loading {
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+    color: #666;
+}
+.error-message {
+    color: red;
+    text-align: center;
+    padding: 20px;
+}
+
+/* Add to existing style section */
+.history-container {
+    display: flex;
+    gap: 20px;
+}
+
+.history-column {
+    flex: 1;
+}
+
+.history-column h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.history-list {
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.history-item {
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.history-item:last-child {
+    border-bottom: none;
+}
+
+.history-item:hover {
+    background-color: #f0f0f0;
+}
+
+.view-count {
+    display: inline-block;
+    background-color: #007bff;
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 12px;
+    margin-left: 5px;
+}
+
+.empty-history {
+    color: #999;
+    font-style: italic;
+    text-align: center;
+    padding: 10px;
+} 

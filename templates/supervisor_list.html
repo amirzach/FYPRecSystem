@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supervisor List - Recommender System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/supervisor_list.css') }}"> 
+</head>
+<body>
+    <div class="header">
+        <div class="logo">SUPERVISOR RECOMMENDER SYSTEM</div>
+        <div class="nav-links">
+            <a href="/homepage">Home</a>
+            <a href="/profiles.html">My Profile</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" placeholder="Filter supervisors by name or expertise" id="searchInput">
+        </div>
+
+        <div id="loadingIndicator" class="loading">
+            Loading supervisors...
+        </div>
+
+        <h2>List of Supervisors</h2>
+        <table class="supervisor-list">
+            <thead>
+                <tr>
+                    <th>Supervisor Name</th>
+                    <th>Area of Expertise</th>
+                </tr>
+            </thead>
+            <tbody id="supervisorTableBody">
+                <!-- Supervisors will be dynamically loaded here -->
+            </tbody>
+        </table>
+    </div>
+    <script src="{{ url_for('static', filename='js/supervisor_list.js') }}"></script>
+</body>
+</html>

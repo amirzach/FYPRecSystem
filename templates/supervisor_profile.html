@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supervisor Profile - Recommender System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/supervisor_profile.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">SUPERVISOR RECOMMENDER SYSTEM</div>
+        <div class="nav-links">
+            <a href="/homepage">Home</a>
+            <a href="/profiles.html">My Profile</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <div id="profileContent">
+            <div class="loading">Loading supervisor profile...</div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/supervisor_profile.js') }}"></script>
+</body>
+</html>

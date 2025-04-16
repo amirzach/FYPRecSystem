@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supervisor Recommender System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/homepage.css') }}"> 
+</head>
+<body>
+    <div class="header">
+        <div class="logo">SUPERVISOR RECOMMENDER SYSTEM</div>
+        <div class="nav-links">
+            <a href="/homepage">Home</a>
+            <a href="/profiles.html">My Profile</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" placeholder="Enter research topic or interest (e.g. AI, Image processing)" id="searchInput">
+        </div>
+
+        <div class="search-trends">
+            <h3>Search Trends</h3>
+            <div class="trends-container">
+                <div class="trend-column">
+                    <div class="trend-title">Recently Searched</div>
+                    <div class="trend-tags" id="recentSearches">
+                        <!-- Recent searches will be populated here -->
+                    </div>
+                </div>
+                <div class="trend-column">
+                    <div class="trend-title">Most Searched</div>
+                    <div class="trend-tags" id="mostSearched">
+                        <!-- Most searched items will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="quick-links">
+            <h3>Quick Links</h3>
+            <ul>
+                <li><a href="/supervisor_list.html">View All Supervisors</a></li>
+                <li><a href="/past_fyp.html">Browse Past FYP Titles</a></li>
+            </ul>
+        </div>
+
+        <div id="loadingIndicator" class="loading">
+            Searching for matching supervisors...
+        </div>
+
+        <div id="noResults" class="no-results">
+            No supervisors found matching your search criteria.
+        </div>
+
+        <div id="searchResults">
+            <div id="supervisorCardContainer">
+                <!-- Supervisor cards will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <div id="chartsView" style="display: none;">
+            <div id="selectedSupervisorProfile" class="supervisor-card">
+                <!-- Selected supervisor details -->
+            </div>
+
+            <div>Supervisors with the same area of expertise:</div>
+
+            <div class="charts-container">
+                <div class="chart">
+                    <div class="chart-title">Area of expertise</div>
+                    <div class="pie-chart">
+                        <img src="/api/placeholder/300/200" alt="Pie Chart" style="max-width: 100%; max-height: 100%;">
+                    </div>
+                </div>
+                <div class="chart">
+                    <div class="chart-title">Number of student supervised</div>
+                    <div class="line-chart">
+                        <img src="/api/placeholder/300/200" alt="Line Chart" style="max-width: 100%; max-height: 100%;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/homepage.js') }}"></script>
+</body>
+</html>

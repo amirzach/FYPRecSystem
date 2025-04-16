@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Past FYP Titles - Recommender System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/past_fyp.css') }}"> 
+</head>
+<body>
+    <div class="header">
+        <div class="logo">SUPERVISOR RECOMMENDER SYSTEM</div>
+        <div class="nav-links">
+            <a href="/homepage">Home</a>
+            <a href="/profiles.html">My Profile</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" placeholder="Enter Author or title" id="searchInput">
+        </div>
+
+        <h2>Past FYP Titles</h2>
+        
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Author</th>
+                    <th>Title</th>
+                    <th>Year</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for project in projects %}
+                <tr onclick="showAbstract('{{ project.ProjectID }}', '{{ project.Title }}', '{{ project.Author }}', '{{ project.Year }}', '{{ project.Abstract|replace('\'', '\\\'') }}')">
+                    <td>{{ project.Author }}</td>
+                    <td>{{ project.Title }}</td>
+                    <td>{{ project.Year }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Modal Popup for Abstract -->
+    <div id="abstractModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h3 id="modalTitle"></h3>
+            <p><strong>Author:</strong> <span id="modalAuthor"></span></p>
+            <p><strong>Year:</strong> <span id="modalYear"></span></p>
+            <p><strong>Abstract:</strong></p>
+            <p id="modalAbstract"></p>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/past_fyp.js') }}"></script>
+</body>
+</html>
