@@ -1,16 +1,14 @@
 from flask import Flask, request, render_template, redirect, url_for, session, send_from_directory, jsonify
 from AiEngine import get_recommender
 import mysql.connector
-from mysql.connector import pooling
 import os
 import random
-import functools
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# MySQL Configuration with connection pooling
+# MySQL Configuration
 db_config = {
     'host': 'localhost',
     'user': 'root',
@@ -18,60 +16,20 @@ db_config = {
     'database': 'project_supervisor_rec'
 }
 
-# Create a connection pool
-connection_pool = pooling.MySQLConnectionPool(
-    pool_name="supervisor_pool",
-    pool_size=10,  # Adjust based on expected load
-    **db_config
-)
-
 # Simple cache implementation
 cache = {}
 CACHE_TIMEOUT = 300  # seconds
 
-def cached(timeout=CACHE_TIMEOUT):
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            cache_key = f"{func.__name__}:{str(args)}:{str(kwargs)}"
-            current_time = datetime.now()
-            
-            # Check if result is in cache and not expired
-            if cache_key in cache and (current_time - cache['timestamp']) < timedelta(seconds=timeout):
-                return cache[cache_key]['data']
-            
-            # Call the function and cache result
-            result = func(*args, **kwargs)
-            cache[cache_key] = {
-                'data': result,
-                'timestamp': current_time
-            }
-            return result
-        return wrapper
-    return decorator
-
-# Get database connection from pool
+# Get database connection
 def get_db_connection():
-    conn = connection_pool.get_connection()
+    conn = mysql.connector.connect(**db_config)
     return conn, conn.cursor(dictionary=True)
 
-# Generate 11-digit random ID - optimized to use a better algorithm
+# Generate random ID
 def generate_random_id():
-    return random.randint(10000, 99999)  # Increased range for better uniqueness
+    return random.randint(10000, 99999)
 
-# Routes
-@app.route('/')
-def index():
-    if 'username' in session:
-        return redirect(url_for('homepage'))
-    return render_template('index.html')
-
-@app.route('/favicon.ico')
-def favicon():
-    return "", 204  # Return no content status code
-
-# Cache student ID checks to reduce database calls
-@cached(timeout=60)
+# Check if student ID exists
 def is_student_id_taken(student_id):
     conn, cursor = get_db_connection()
     try:
@@ -81,23 +39,29 @@ def is_student_id_taken(student_id):
         cursor.close()
         conn.close()
 
+# Get unique student ID
 def get_unique_student_id():
     while True:
         student_id = generate_random_id()
         if not is_student_id_taken(student_id):
             return student_id
 
+# Basic Routes
+@app.route('/')
+def index():
+    if 'username' in session:
+        return redirect(url_for('homepage'))
+    return render_template('index.html')
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'GET':
         return render_template('register.html')
     
-    # Handle POST request
     username = request.form.get('username')
     email = request.form.get('email')
     password = request.form.get('password')
     
-    # Check if username or email already exists
     conn, cursor = get_db_connection()
     try:
         cursor.execute("SELECT StdName, StdEmail FROM student WHERE StdName = %s OR StdEmail = %s", 
@@ -112,7 +76,6 @@ def register():
                 error_message = "Email already registered. Please use a different email."
             return render_template('register.html', error=error_message)
         
-        # If no existing user, proceed with registration
         student_id = get_unique_student_id()
         cursor.execute(
             "INSERT INTO student (StudentID, StdName, StdEmail, StdPassword) VALUES (%s, %s, %s, %s)",
@@ -134,7 +97,6 @@ def login():
     
     conn, cursor = get_db_connection()
     try:
-        # Use a single query with UNION to check both tables at once
         cursor.execute("""
             SELECT 'admin' as type, AdminID as id, AdName as name, AdPassword as password 
             FROM admin WHERE AdName = %s
@@ -155,12 +117,10 @@ def login():
                 session['user_id'] = user['id']
                 return redirect(url_for('homepage'))
         
-        error_message = "Invalid username or password. Please try again."
-        return render_template('index.html', error=error_message)
+        return render_template('index.html', error="Invalid username or password. Please try again.")
     except mysql.connector.Error as err:
         print(f"Database error: {err}")
-        error_message = "Login failed. Please try again later."
-        return render_template('index.html', error=error_message)
+        return render_template('index.html', error="Login failed. Please try again later.")
     finally:
         cursor.close()
         conn.close()
@@ -173,27 +133,32 @@ def homepage():
 
 @app.route('/logout')
 def logout():
-    session.pop('username', None)
-    session.pop('user_id', None)
+    session.clear()
     return redirect(url_for('index'))
 
-# Add route to serve supervisor profile pictures
-@app.route('/sv_pictures/<filename>')
+# Helper function to check and get cached data
+def get_cached_data(key, timeout=CACHE_TIMEOUT):
+    if key in cache:
+        timestamp = cache[key].get('timestamp')
+        if timestamp and (datetime.now() - timestamp) < timedelta(seconds=timeout):
+            return cache[key].get('data')
+    return None
+
+# Helper function to set cached data
+def set_cached_data(key, data):
+    cache[key] = {
+        'data': data,
+        'timestamp': datetime.now()
+    }
+
+# API Routes
+@app.route('/supervisor_picture/<filename>')
 def supervisor_picture(filename):
-    # Cache the existence check to reduce file system operations
-    cache_key = f"picture_exists:{filename}"
     picture_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'SV PICTURE')
     
-    if cache_key in cache:
-        exists = cache[cache_key]
-    else:
-        exists = os.path.exists(os.path.join(picture_path, filename))
-        cache[cache_key] = exists
-    
-    if exists:
+    if os.path.exists(os.path.join(picture_path, filename)):
         return send_from_directory(picture_path, filename)
     else:
-        # Return default picture if requested picture doesn't exist
         return send_from_directory(picture_path, 'default.jpg')
 
 @app.route('/api/supervisors', methods=['GET'])
@@ -201,14 +166,13 @@ def get_all_supervisors():
     if 'username' not in session:
         return jsonify({"error": "Unauthorized"}), 401
     
-    # Cache this expensive query
     cache_key = "all_supervisors"
-    if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 300:
-        return jsonify({"supervisors": cache[cache_key]['data']})
+    cached_data = get_cached_data(cache_key)
+    if cached_data:
+        return jsonify({"supervisors": cached_data})
         
     conn, cursor = get_db_connection()
     try:
-        # Optimized query with index hint
         cursor.execute("""
             SELECT s.SupervisorID, s.SvName, GROUP_CONCAT(e.Expertise SEPARATOR ', ') as expertise_areas
             FROM supervisor s
@@ -218,12 +182,7 @@ def get_all_supervisors():
         """)
         
         supervisors = cursor.fetchall()
-        
-        # Cache the result
-        cache[cache_key] = {
-            'data': supervisors,
-            'timestamp': datetime.now()
-        }
+        set_cached_data(cache_key, supervisors)
         
         return jsonify({"supervisors": supervisors})
     except mysql.connector.Error as err:
@@ -244,19 +203,17 @@ def get_supervisor(supervisor_id):
     if 'username' not in session:
         return jsonify({"error": "Unauthorized"}), 401
     
-    # Log this view - do this asynchronously to not block
+    # Log supervisor view
     if 'user_id' in session:
-        # Use a separate thread or task queue for this in a real app
         log_supervisor_view(session['user_id'], supervisor_id)
     
-    # Check cache first
     cache_key = f"supervisor:{supervisor_id}"
-    if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 300:
-        return jsonify(cache[cache_key]['data'])
+    cached_data = get_cached_data(cache_key)
+    if cached_data:
+        return jsonify(cached_data)
         
     conn, cursor = get_db_connection()
     try:
-        # Get supervisor details with expertise areas
         cursor.execute("""
             SELECT s.SupervisorID, s.SvName, s.SvEmail, GROUP_CONCAT(e.Expertise SEPARATOR ', ') as expertise_areas
             FROM supervisor s
@@ -269,12 +226,7 @@ def get_supervisor(supervisor_id):
         if not supervisor:
             return jsonify({"error": "Supervisor not found"}), 404
             
-        # Cache the result
-        cache[cache_key] = {
-            'data': supervisor,
-            'timestamp': datetime.now()
-        }
-            
+        set_cached_data(cache_key, supervisor)
         return jsonify(supervisor)
     except mysql.connector.Error as err:
         print(f"Database error: {err}")
@@ -282,7 +234,23 @@ def get_supervisor(supervisor_id):
     finally:
         cursor.close()
         conn.close()
-       
+
+def log_supervisor_view(student_id, supervisor_id):
+    conn, cursor = get_db_connection()
+    try:
+        cursor.execute("""
+            INSERT INTO supervisor_views (StudentID, SupervisorID, view_count, last_viewed)
+            VALUES (%s, %s, 1, NOW())
+            ON DUPLICATE KEY UPDATE view_count = view_count + 1, last_viewed = NOW()
+        """, (student_id, supervisor_id))
+            
+        conn.commit()
+    except mysql.connector.Error as err:
+        print(f"Database error in log_supervisor_view: {err}")
+    finally:
+        cursor.close()
+        conn.close()
+
 @app.route('/supervisor_list.html')
 def supervisor_list():
     if 'username' not in session:
@@ -300,12 +268,11 @@ def past_fyp():
     if 'username' not in session:
         return redirect(url_for('index'))
     
-    # Cache the fyp projects data
     cache_key = "past_fyp_projects"
-    if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 300:
-        return render_template('past_fyp.html', projects=cache[cache_key]['data'])
+    cached_data = get_cached_data(cache_key)
+    if cached_data:
+        return render_template('past_fyp.html', projects=cached_data)
     
-    # Get FYP projects from database
     conn, cursor = get_db_connection()
     try:
         cursor.execute("""
@@ -315,12 +282,7 @@ def past_fyp():
         """)
         
         fyp_projects = cursor.fetchall()
-        
-        # Cache the result
-        cache[cache_key] = {
-            'data': fyp_projects,
-            'timestamp': datetime.now()
-        }
+        set_cached_data(cache_key, fyp_projects)
         
         return render_template('past_fyp.html', projects=fyp_projects)
     except mysql.connector.Error as err:
@@ -339,20 +301,15 @@ def search_supervisors():
     min_score = float(request.args.get('min_score', 0.1))
     top_n = int(request.args.get('top_n', 5))
     
-    # Cache search results for common queries
     cache_key = f"search:{query}:{min_score}:{top_n}"
-    if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 60:
-        return jsonify({"results": cache[cache_key]['data']})
+    cached_data = get_cached_data(cache_key, timeout=60)
+    if cached_data:
+        return jsonify({"results": cached_data})
     
     try:
         recommender = get_recommender()
         results = recommender.search_supervisors(query, min_score, top_n)
-        
-        # Cache the result for this query
-        cache[cache_key] = {
-            'data': results,
-            'timestamp': datetime.now()
-        }
+        set_cached_data(cache_key, results)
         
         return jsonify({"results": results})
     except Exception as e:
@@ -364,10 +321,10 @@ def get_student_profile():
     if 'username' not in session or 'user_id' not in session:
         return jsonify({"error": "Unauthorized"}), 401
     
-    # Cache student profile
     cache_key = f"student_profile:{session['user_id']}"
-    if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 300:
-        return jsonify(cache[cache_key]['data'])
+    cached_data = get_cached_data(cache_key)
+    if cached_data:
+        return jsonify(cached_data)
         
     conn, cursor = get_db_connection()
     try:
@@ -384,63 +341,11 @@ def get_student_profile():
             "email": user['StdEmail']
         }
         
-        # Cache the result
-        cache[cache_key] = {
-            'data': profile_data,
-            'timestamp': datetime.now()
-        }
-            
+        set_cached_data(cache_key, profile_data)
         return jsonify(profile_data)
     except mysql.connector.Error as err:
         print(f"Database error: {err}")
         return jsonify({"error": str(err)}), 500
-    finally:
-        cursor.close()
-        conn.close()
-
-@app.route('/api/student_email', methods=['GET'])
-def get_student_email():
-    if 'username' not in session or 'user_id' not in session:
-        return jsonify({"error": "Unauthorized"}), 401
-        
-    student_id = request.args.get('id')
-    if not student_id or int(student_id) != session['user_id']:
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    # Use the cached profile data if available
-    cache_key = f"student_profile:{session['user_id']}"
-    if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 300:
-        return jsonify({"email": cache[cache_key]['data']['email']})
-        
-    conn, cursor = get_db_connection()
-    try:
-        cursor.execute("SELECT StdEmail FROM student WHERE StudentID = %s", (student_id,))
-        
-        result = cursor.fetchone()
-        if not result:
-            return jsonify({"error": "User not found"}), 404
-            
-        return jsonify({"email": result['StdEmail']})
-    except mysql.connector.Error as err:
-        print(f"Database error: {err}")
-        return jsonify({"error": str(err)}), 500
-    finally:
-        cursor.close()
-        conn.close()
-        
-def log_supervisor_view(student_id, supervisor_id):
-    conn, cursor = get_db_connection()
-    try:
-        # Use INSERT ... ON DUPLICATE KEY UPDATE instead of querying first
-        cursor.execute("""
-            INSERT INTO supervisor_views (StudentID, SupervisorID, view_count, last_viewed)
-            VALUES (%s, %s, 1, NOW())
-            ON DUPLICATE KEY UPDATE view_count = view_count + 1, last_viewed = NOW()
-        """, (student_id, supervisor_id))
-            
-        conn.commit()
-    except mysql.connector.Error as err:
-        print(f"Database error in log_supervisor_view: {err}")
     finally:
         cursor.close()
         conn.close()
@@ -450,14 +355,13 @@ def get_supervisor_history():
     if 'username' not in session or 'user_id' not in session:
         return jsonify({"error": "Unauthorized"}), 401
     
-    # Cache history data
     cache_key = f"supervisor_history:{session['user_id']}"
-    if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 60:
-        return jsonify(cache[cache_key]['data'])
+    cached_data = get_cached_data(cache_key, timeout=60)
+    if cached_data:
+        return jsonify(cached_data)
             
     conn, cursor = get_db_connection()
     try:
-        # Combined query for both recent and most viewed supervisors
         cursor.execute("""
             (SELECT sv.view_count, sv.last_viewed, s.SupervisorID, s.SvName, 'recent' as list_type 
             FROM supervisor_views sv
@@ -480,7 +384,7 @@ def get_supervisor_history():
         recent = [item for item in all_results if item['list_type'] == 'recent']
         most_viewed = [item for item in all_results if item['list_type'] == 'most_viewed']
         
-        # Clean up the results by removing the list_type field
+        # Clean up the results
         for item in recent + most_viewed:
             del item['list_type']
         
@@ -489,12 +393,7 @@ def get_supervisor_history():
             "most_viewed": most_viewed
         }
         
-        # Cache the result
-        cache[cache_key] = {
-            'data': result,
-            'timestamp': datetime.now()
-        }
-            
+        set_cached_data(cache_key, result)
         return jsonify(result)
     except mysql.connector.Error as err:
         print(f"Database error: {err}")
@@ -508,14 +407,13 @@ def get_supervisor_fyp(supervisor_id):
     if 'username' not in session:
         return jsonify({"error": "Unauthorized"}), 401
     
-    # Cache FYP data for each supervisor
     cache_key = f"supervisor_fyp:{supervisor_id}"
-    if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 300:
-        return jsonify({"projects": cache[cache_key]['data']})
+    cached_data = get_cached_data(cache_key)
+    if cached_data:
+        return jsonify({"projects": cached_data})
         
     conn, cursor = get_db_connection()
     try:
-        # Get FYP projects supervised by this supervisor
         cursor.execute("""
             SELECT p.ProjectID, p.Title, p.Author, p.Abstract, p.Year
             FROM past_fyp p
@@ -524,12 +422,7 @@ def get_supervisor_fyp(supervisor_id):
         """, (supervisor_id,))
         
         projects = cursor.fetchall()
-        
-        # Cache the result
-        cache[cache_key] = {
-            'data': projects,
-            'timestamp': datetime.now()
-        }
+        set_cached_data(cache_key, projects)
         
         return jsonify({"projects": projects})
     except mysql.connector.Error as err:
@@ -554,12 +447,10 @@ def admin_login():
             session['admin_id'] = admin['AdminID']
             return redirect(url_for('admin_dashboard'))
         
-        error_message = "Invalid admin credentials. Please try again."
-        return render_template('index.html', error=error_message)
+        return render_template('index.html', error="Invalid admin credentials. Please try again.")
     except mysql.connector.Error as err:
         print(f"Database error: {err}")
-        error_message = "Login failed. Please try again later."
-        return render_template('index.html', error=error_message)
+        return render_template('index.html', error="Login failed. Please try again later.")
     finally:
         cursor.close()
         conn.close()
@@ -576,19 +467,37 @@ def admin_logout():
     session.pop('admin_id', None)
     return redirect(url_for('index'))
 
+@app.route('/admin/supervisors')
+def admin_supervisors_page():
+    if 'admin_username' not in session:
+        return redirect(url_for('index'))
+    return render_template('admin_supervisors.html')
+
+# Helper function to clear cache
+def clear_cache(keys=None, patterns=None):
+    if keys:
+        for key in keys:
+            cache.pop(key, None)
+    
+    if patterns:
+        for pattern in patterns:
+            matches = [k for k in cache if k.startswith(pattern)]
+            for key in matches:
+                cache.pop(key, None)
+
 @app.route('/api/admin/fyp', methods=['GET', 'POST'])
 def admin_fyp():
     if 'admin_username' not in session:
         return jsonify({"error": "Unauthorized"}), 401
     
-    if request.method == 'GET':
-        # Cache admin FYP list
-        cache_key = "admin_fyp_list"
-        if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 60:
-            return jsonify({"projects": cache[cache_key]['data']})
-            
-        conn, cursor = get_db_connection()
-        try:
+    cache_key = "admin_fyp_list"
+    conn, cursor = get_db_connection()
+    
+    try:
+        if request.method == 'GET':
+            if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 60:
+                return jsonify({"projects": cache[cache_key]['data']})
+                
             cursor.execute("""
                 SELECT p.*, s.SvName as SupervisorName
                 FROM past_fyp p
@@ -597,32 +506,20 @@ def admin_fyp():
             """)
             projects = cursor.fetchall()
             
-            # Cache the result
             cache[cache_key] = {
                 'data': projects,
                 'timestamp': datetime.now()
             }
             
             return jsonify({"projects": projects})
-        except mysql.connector.Error as err:
-            print(f"Database error: {err}")
-            return jsonify({"error": str(err)}), 500
-        finally:
-            cursor.close()
-            conn.close()
-    
-    elif request.method == 'POST':
-        data = request.json
-        conn, cursor = get_db_connection()
-        try:
-            # First get the maximum project ID
+        
+        elif request.method == 'POST':
+            data = request.json
+            
             cursor.execute("SELECT MAX(ProjectID) as max_id FROM past_fyp")
             result = cursor.fetchone()
-            next_id = 1  # Default if no projects exist
-            if result and result['max_id'] is not None:
-                next_id = result['max_id'] + 1
+            next_id = 1 if not result or result['max_id'] is None else result['max_id'] + 1
             
-            # Now insert with the next sequential ID
             cursor.execute("""
                 INSERT INTO past_fyp (ProjectID, Title, Author, Abstract, Year, SupervisorID)
                 VALUES (%s, %s, %s, %s, %s, %s)
@@ -637,25 +534,19 @@ def admin_fyp():
             conn.commit()
             
             # Clear relevant caches
-            cache_key = "admin_fyp_list"
-            if cache_key in cache:
-                del cache[cache_key]
-                
-            cache_key = "past_fyp_projects"
-            if cache_key in cache:
-                del cache[cache_key]
-                
-            cache_key = f"supervisor_fyp:{data.get('SupervisorID')}"
-            if cache_key in cache:
-                del cache[cache_key]
-                
+            clear_cache(
+                keys=["admin_fyp_list", "past_fyp_projects"],
+                patterns=[f"supervisor_fyp:{data.get('SupervisorID')}"]
+            )
+            
             return jsonify({"success": True, "message": "Project added successfully", "projectId": next_id})
-        except mysql.connector.Error as err:
-            print(f"Database error: {err}")
-            return jsonify({"success": False, "error": str(err)}), 500
-        finally:
-            cursor.close()
-            conn.close()
+    
+    except mysql.connector.Error as err:
+        print(f"Database error: {err}")
+        return jsonify({"error": str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 @app.route('/api/admin/fyp/<int:project_id>', methods=['GET', 'PUT', 'DELETE'])
 def admin_fyp_detail(project_id):
@@ -664,31 +555,24 @@ def admin_fyp_detail(project_id):
     
     conn, cursor = get_db_connection()
     
-    if request.method == 'GET':
-        try:
-            cursor.execute("""
-                SELECT * FROM past_fyp WHERE ProjectID = %s
-            """, (project_id,))
+    try:
+        if request.method == 'GET':
+            cursor.execute("SELECT * FROM past_fyp WHERE ProjectID = %s", (project_id,))
             project = cursor.fetchone()
             
             if not project:
                 return jsonify({"error": "Project not found"}), 404
                 
             return jsonify({"project": project})
-        except mysql.connector.Error as err:
-            print(f"Database error: {err}")
-            return jsonify({"error": str(err)}), 500
-        finally:
-            cursor.close()
-            conn.close()
-    
-    elif request.method == 'PUT':
-        data = request.json
-        try:
-            # Get old supervisor ID first to clear its cache
+        
+        elif request.method == 'PUT':
+            data = request.json
+            
+            # Get old supervisor ID to clear its cache
             cursor.execute("SELECT SupervisorID FROM past_fyp WHERE ProjectID = %s", (project_id,))
             old_record = cursor.fetchone()
             old_supervisor_id = old_record['SupervisorID'] if old_record else None
+            new_supervisor_id = data.get('SupervisorID')
             
             cursor.execute("""
                 UPDATE past_fyp
@@ -699,7 +583,7 @@ def admin_fyp_detail(project_id):
                 data.get('Author'),
                 data.get('Abstract'),
                 data.get('Year'),
-                data.get('SupervisorID'),
+                new_supervisor_id,
                 project_id
             ))
             conn.commit()
@@ -707,37 +591,22 @@ def admin_fyp_detail(project_id):
             if cursor.rowcount == 0:
                 return jsonify({"success": False, "error": "Project not found"}), 404
             
-            # Clear relevant caches
-            cache_key = "admin_fyp_list"
-            if cache_key in cache:
-                del cache[cache_key]
-                
-            cache_key = "past_fyp_projects"
-            if cache_key in cache:
-                del cache[cache_key]
-                
+            # Clear caches
+            cache_keys = ["admin_fyp_list", "past_fyp_projects"]
+            patterns = []
+            
             if old_supervisor_id:
-                cache_key = f"supervisor_fyp:{old_supervisor_id}"
-                if cache_key in cache:
-                    del cache[cache_key]
-                    
-            new_supervisor_id = data.get('SupervisorID')
+                patterns.append(f"supervisor_fyp:{old_supervisor_id}")
+            
             if new_supervisor_id and new_supervisor_id != old_supervisor_id:
-                cache_key = f"supervisor_fyp:{new_supervisor_id}"
-                if cache_key in cache:
-                    del cache[cache_key]
-                
+                patterns.append(f"supervisor_fyp:{new_supervisor_id}")
+            
+            clear_cache(keys=cache_keys, patterns=patterns)
+            
             return jsonify({"success": True, "message": "Project updated successfully"})
-        except mysql.connector.Error as err:
-            print(f"Database error: {err}")
-            return jsonify({"success": False, "error": str(err)}), 500
-        finally:
-            cursor.close()
-            conn.close()
-    
-    elif request.method == 'DELETE':
-        try:
-            # Get supervisor ID first to clear its cache
+        
+        elif request.method == 'DELETE':
+            # Get supervisor ID to clear its cache
             cursor.execute("SELECT SupervisorID FROM past_fyp WHERE ProjectID = %s", (project_id,))
             project = cursor.fetchone()
             supervisor_id = project['SupervisorID'] if project else None
@@ -748,41 +617,37 @@ def admin_fyp_detail(project_id):
             if cursor.rowcount == 0:
                 return jsonify({"success": False, "error": "Project not found"}), 404
             
-            # Clear relevant caches
-            cache_key = "admin_fyp_list"
-            if cache_key in cache:
-                del cache[cache_key]
-                
-            cache_key = "past_fyp_projects"
-            if cache_key in cache:
-                del cache[cache_key]
-                
-            if supervisor_id:
-                cache_key = f"supervisor_fyp:{supervisor_id}"
-                if cache_key in cache:
-                    del cache[cache_key]
-                
-            return jsonify({"success": True, "message": "Project deleted successfully"})
-        except mysql.connector.Error as err:
-            print(f"Database error: {err}")
-            return jsonify({"success": False, "error": str(err)}), 500
-        finally:
-            cursor.close()
-            conn.close()
+            # Clear caches
+            cache_keys = ["admin_fyp_list", "past_fyp_projects"]
+            patterns = []
             
+            if supervisor_id:
+                patterns.append(f"supervisor_fyp:{supervisor_id}")
+            
+            clear_cache(keys=cache_keys, patterns=patterns)
+            
+            return jsonify({"success": True, "message": "Project deleted successfully"})
+    
+    except mysql.connector.Error as err:
+        print(f"Database error: {err}")
+        return jsonify({"success": False, "error": str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
 @app.route('/api/admin/supervisors', methods=['GET', 'POST'])
 def admin_supervisors():
     if 'admin_username' not in session:
         return jsonify({"error": "Unauthorized"}), 401
     
-    if request.method == 'GET':
-        # Cache admin supervisors list
-        cache_key = "admin_supervisors_list"
-        if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 60:
-            return jsonify({"supervisors": cache[cache_key]['data']})
-            
-        conn, cursor = get_db_connection()
-        try:
+    cache_key = "admin_supervisors_list"
+    conn, cursor = get_db_connection()
+    
+    try:
+        if request.method == 'GET':
+            if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 60:
+                return jsonify({"supervisors": cache[cache_key]['data']})
+                
             cursor.execute("""
                 SELECT s.SupervisorID, s.SvName, s.SvEmail, 
                        GROUP_CONCAT(DISTINCT e.Expertise SEPARATOR ', ') as expertise_areas
@@ -798,34 +663,25 @@ def admin_supervisors():
                 if supervisor['expertise_areas'] is None:
                     supervisor['expertise_areas'] = ''
             
-            # Cache the result
             cache[cache_key] = {
                 'data': supervisors,
                 'timestamp': datetime.now()
             }
                     
             return jsonify({"supervisors": supervisors})
-        except mysql.connector.Error as err:
-            print(f"Database error: {err}")
-            return jsonify({"error": str(err)}), 500
-        finally:
-            cursor.close()
-            conn.close()
-    
-    elif request.method == 'POST':
-        data = request.json
-        conn, cursor = get_db_connection()
-        try:
+        
+        elif request.method == 'POST':
+            data = request.json
+            
             # Start transaction
             conn.start_transaction()
             
-            # Get the maximum SupervisorID to ensure we continue numbering properly
+            # Get new supervisor ID
             cursor.execute("SELECT MAX(SupervisorID) as max_id FROM supervisor")
             result = cursor.fetchone()
-            max_supervisor_id = result['max_id'] if result['max_id'] is not None else 0
-            new_supervisor_id = max_supervisor_id + 1
+            new_supervisor_id = (result['max_id'] if result['max_id'] is not None else 0) + 1
             
-            # Insert with explicit SupervisorID to ensure continuous numbering
+            # Insert supervisor
             cursor.execute("""
                 INSERT INTO supervisor (SupervisorID, SvName, SvEmail)
                 VALUES (%s, %s, %s)
@@ -834,45 +690,39 @@ def admin_supervisors():
                 data.get('SvName'),
                 data.get('SvEmail')
             ))
-            supervisor_id = new_supervisor_id
             
-            # Insert expertise areas if provided
+            # Handle expertise areas
             if 'expertise' in data and data['expertise']:
                 expertise_list = [x.strip() for x in data['expertise'].split(',') if x.strip()]
                 
-                # Check if ExpertiseID is an auto-increment field - cache this info for efficiency
-                if 'expertise_table_structure' not in cache:
+                # Check for auto-increment
+                if 'expertise_table_info' not in cache:
                     cursor.execute("DESCRIBE expertise")
-                    table_structure = cursor.fetchall()
+                    has_auto_increment = any('auto_increment' in col.get('Extra', '').lower() 
+                                         for col in cursor.fetchall() 
+                                         if col.get('Field') == 'ExpertiseID')
                     
-                    has_auto_increment_id = False
-                    for column in table_structure:
-                        if column.get('Field') == 'ExpertiseID' and 'auto_increment' in column.get('Extra', '').lower():
-                            has_auto_increment_id = True
-                            break
-                            
-                    cache['expertise_table_structure'] = {
-                        'has_auto_increment': has_auto_increment_id,
+                    cache['expertise_table_info'] = {
+                        'has_auto_increment': has_auto_increment,
                         'timestamp': datetime.now()
                     }
                 else:
-                    has_auto_increment_id = cache['expertise_table_structure']['has_auto_increment']
+                    has_auto_increment = cache['expertise_table_info']['has_auto_increment']
                 
-                if has_auto_increment_id:
-                    # Use batch insertion for better performance
-                    values = [(supervisor_id, expertise) for expertise in expertise_list]
+                if has_auto_increment:
+                    # Batch insert with auto-increment
+                    values = [(new_supervisor_id, expertise) for expertise in expertise_list]
                     cursor.executemany("""
                         INSERT INTO expertise (SupervisorID, Expertise)
                         VALUES (%s, %s)
                     """, values)
                 else:
-                    # Generate unique IDs for expertise entries
+                    # Generate IDs manually
                     cursor.execute("SELECT MAX(ExpertiseID) as max_id FROM expertise")
-                    result = cursor.fetchone()
-                    max_id = result['max_id'] if result['max_id'] is not None else 0
+                    max_id = cursor.fetchone()['max_id'] or 0
                     
-                    # Prepare batch values with expertise IDs
-                    values = [(max_id + i + 1, supervisor_id, expertise) for i, expertise in enumerate(expertise_list)]
+                    values = [(max_id + i + 1, new_supervisor_id, expertise) 
+                             for i, expertise in enumerate(expertise_list)]
                     cursor.executemany("""
                         INSERT INTO expertise (ExpertiseID, SupervisorID, Expertise)
                         VALUES (%s, %s, %s)
@@ -880,40 +730,22 @@ def admin_supervisors():
             
             conn.commit()
             
-            # Clear related caches
-            clear_supervisor_caches(supervisor_id)
+            # Clear caches
+            clear_cache(
+                keys=["all_supervisors", "admin_supervisors_list"],
+                patterns=[f"supervisor:{new_supervisor_id}", "search:"]
+            )
             
             return jsonify({"success": True, "message": "Supervisor added successfully"})
-        except mysql.connector.Error as err:
+    
+    except mysql.connector.Error as err:
+        if request.method == 'POST':
             conn.rollback()
-            print(f"Database error: {err}")
-            return jsonify({"success": False, "error": str(err)}), 500
-        finally:
-            cursor.close()
-            conn.close()
-
-# Helper function to clear supervisor-related caches
-def clear_supervisor_caches(supervisor_id=None):
-    keys_to_delete = []
-    
-    # Clear general supervisor lists
-    keys_to_delete.append("all_supervisors")
-    keys_to_delete.append("admin_supervisors_list")
-    
-    # Clear specific supervisor caches if ID provided
-    if supervisor_id is not None:
-        keys_to_delete.append(f"supervisor:{supervisor_id}")
-        keys_to_delete.append(f"supervisor_fyp:{supervisor_id}")
-        
-    # Remove keys from cache
-    for key in keys_to_delete:
-        if key in cache:
-            del cache[key]
-    
-    # Also clear any search results as they may include this supervisor
-    search_keys = [k for k in cache if k.startswith("search:")]
-    for key in search_keys:
-        del cache[key]
+        print(f"Database error: {err}")
+        return jsonify({"success": False, "error": str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 @app.route('/api/admin/supervisors/<int:supervisor_id>', methods=['GET', 'PUT', 'DELETE'])
 def admin_supervisor_detail(supervisor_id):
@@ -921,14 +753,13 @@ def admin_supervisor_detail(supervisor_id):
         return jsonify({"error": "Unauthorized"}), 401
     
     conn, cursor = get_db_connection()
+    cache_key = f"admin_supervisor:{supervisor_id}"
     
-    if request.method == 'GET':
-        # Check cache first
-        cache_key = f"admin_supervisor:{supervisor_id}"
-        if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 60:
-            return jsonify({"supervisor": cache[cache_key]['data']})
-        
-        try:
+    try:
+        if request.method == 'GET':
+            if cache_key in cache and (datetime.now() - cache[cache_key]['timestamp']).seconds < 60:
+                return jsonify({"supervisor": cache[cache_key]['data']})
+            
             cursor.execute("""
                 SELECT s.SupervisorID, s.SvName, s.SvEmail, 
                        GROUP_CONCAT(e.Expertise SEPARATOR ', ') as expertise_areas
@@ -942,27 +773,20 @@ def admin_supervisor_detail(supervisor_id):
             if not supervisor:
                 return jsonify({"error": "Supervisor not found"}), 404
             
-            # Cache the result
             cache[cache_key] = {
                 'data': supervisor,
                 'timestamp': datetime.now()
             }
                 
             return jsonify({"supervisor": supervisor})
-        except mysql.connector.Error as err:
-            print(f"Database error: {err}")
-            return jsonify({"error": str(err)}), 500
-        finally:
-            cursor.close()
-            conn.close()
-    
-    elif request.method == 'PUT':
-        data = request.json
-        try:
+        
+        elif request.method == 'PUT':
+            data = request.json
+            
             # Start transaction
             conn.start_transaction()
             
-            # Update supervisor basic info
+            # Update supervisor info
             cursor.execute("""
                 UPDATE supervisor
                 SET SvName = %s, SvEmail = %s
@@ -973,48 +797,43 @@ def admin_supervisor_detail(supervisor_id):
                 supervisor_id
             ))
             
-            # Handle expertise areas - use DELETE + INSERT instead of SELECT + DELETE + INSERT
+            # Handle expertise areas
             if 'expertise' in data:
-                # Delete existing expertise areas
+                # Delete existing expertise
                 cursor.execute("DELETE FROM expertise WHERE SupervisorID = %s", (supervisor_id,))
                 
-                # Insert new expertise areas using batch operation
+                # Insert new expertise if provided
                 if data['expertise'].strip():
                     expertise_list = [x.strip() for x in data['expertise'].split(',') if x.strip()]
                     
-                    # Check if ExpertiseID is an auto-increment field - use cached info if available
-                    if 'expertise_table_structure' not in cache:
+                    # Check for auto-increment (use cached info if available)
+                    if 'expertise_table_info' not in cache:
                         cursor.execute("DESCRIBE expertise")
-                        table_structure = cursor.fetchall()
+                        has_auto_increment = any('auto_increment' in col.get('Extra', '').lower() 
+                                             for col in cursor.fetchall() 
+                                             if col.get('Field') == 'ExpertiseID')
                         
-                        has_auto_increment_id = False
-                        for column in table_structure:
-                            if column.get('Field') == 'ExpertiseID' and 'auto_increment' in column.get('Extra', '').lower():
-                                has_auto_increment_id = True
-                                break
-                                
-                        cache['expertise_table_structure'] = {
-                            'has_auto_increment': has_auto_increment_id,
+                        cache['expertise_table_info'] = {
+                            'has_auto_increment': has_auto_increment,
                             'timestamp': datetime.now()
                         }
                     else:
-                        has_auto_increment_id = cache['expertise_table_structure']['has_auto_increment']
+                        has_auto_increment = cache['expertise_table_info']['has_auto_increment']
                     
-                    if has_auto_increment_id:
-                        # Use batch insertion for better performance
+                    if has_auto_increment:
+                        # Batch insert with auto-increment
                         values = [(supervisor_id, expertise) for expertise in expertise_list]
                         cursor.executemany("""
                             INSERT INTO expertise (SupervisorID, Expertise)
                             VALUES (%s, %s)
                         """, values)
                     else:
-                        # Generate unique IDs for expertise entries
+                        # Generate IDs manually
                         cursor.execute("SELECT MAX(ExpertiseID) as max_id FROM expertise")
-                        result = cursor.fetchone()
-                        max_id = result['max_id'] if result['max_id'] is not None else 0
+                        max_id = cursor.fetchone()['max_id'] or 0
                         
-                        # Prepare batch values with expertise IDs
-                        values = [(max_id + i + 1, supervisor_id, expertise) for i, expertise in enumerate(expertise_list)]
+                        values = [(max_id + i + 1, supervisor_id, expertise) 
+                                 for i, expertise in enumerate(expertise_list)]
                         cursor.executemany("""
                             INSERT INTO expertise (ExpertiseID, SupervisorID, Expertise)
                             VALUES (%s, %s, %s)
@@ -1022,30 +841,25 @@ def admin_supervisor_detail(supervisor_id):
             
             conn.commit()
             
-            # Clear related caches
-            clear_supervisor_caches(supervisor_id)
+            # Clear caches
+            clear_cache(
+                keys=["all_supervisors", "admin_supervisors_list", cache_key],
+                patterns=[f"supervisor:{supervisor_id}", f"supervisor_fyp:{supervisor_id}", "search:"]
+            )
             
             return jsonify({"success": True, "message": "Supervisor updated successfully"})
-        except mysql.connector.Error as err:
-            conn.rollback()
-            print(f"Database error: {err}")
-            return jsonify({"success": False, "error": str(err)}), 500
-        finally:
-            cursor.close()
-            conn.close()
-    
-    elif request.method == 'DELETE':
-        try:
+        
+        elif request.method == 'DELETE':
             # Start transaction
             conn.start_transaction()
             
-            # First delete expertise areas (foreign key constraint)
+            # Delete expertise areas (foreign key constraint)
             cursor.execute("DELETE FROM expertise WHERE SupervisorID = %s", (supervisor_id,))
             
             # Delete supervisor views
             cursor.execute("DELETE FROM supervisor_views WHERE SupervisorID = %s", (supervisor_id,))
             
-            # Check if any FYP projects are using this supervisor - optimize query to just count
+            # Check if any FYP projects use this supervisor
             cursor.execute("SELECT COUNT(*) AS count FROM past_fyp WHERE SupervisorID = %s", (supervisor_id,))
             result = cursor.fetchone()
             
@@ -1056,66 +870,48 @@ def admin_supervisor_detail(supervisor_id):
                     "error": f"Cannot delete supervisor. {result['count']} FYP projects are assigned to this supervisor."
                 }), 400
                 
-            # Now delete the supervisor
+            # Delete the supervisor
             cursor.execute("DELETE FROM supervisor WHERE SupervisorID = %s", (supervisor_id,))
             conn.commit()
             
             if cursor.rowcount == 0:
                 return jsonify({"success": False, "error": "Supervisor not found"}), 404
             
-            # Clear related caches
-            clear_supervisor_caches(supervisor_id)
+            # Clear caches
+            clear_cache(
+                keys=["all_supervisors", "admin_supervisors_list", cache_key],
+                patterns=[f"supervisor:{supervisor_id}", f"supervisor_fyp:{supervisor_id}", "search:"]
+            )
                 
             return jsonify({"success": True, "message": "Supervisor deleted successfully"})
-        except mysql.connector.Error as err:
+    
+    except mysql.connector.Error as err:
+        if request.method in ['PUT', 'DELETE']:
             conn.rollback()
-            print(f"Database error: {err}")
-            return jsonify({"success": False, "error": str(err)}), 500
-        finally:
-            cursor.close()
-            conn.close()
-            
-@app.route('/admin/supervisors')
-def admin_supervisors_page():
-    if 'admin_username' not in session:
-        return redirect(url_for('index'))
-    return render_template('admin_supervisors.html')
-
-# Clear expired cache entries periodically - would be better as a background task
-def clean_cache():
-    now = datetime.now()
-    expired_keys = []
-    
-    for key, value in cache.items():
-        if isinstance(value, dict) and 'timestamp' in value:
-            if (now - value['timestamp']).seconds > 600:  # 10 minutes expiry
-                expired_keys.append(key)
-    
-    for key in expired_keys:
-        del cache[key]
-
-# Run this function occasionally, e.g., every 100 requests
-request_counter = 0
-@app.before_request
-def before_request():
-    global request_counter
-    request_counter += 1
-    if request_counter >= 100:
-        clean_cache()
-        request_counter = 0
-
-# Initialize database before first request
-@app.before_first_request
-def before_first_request():
-    # Create tables if needed
-    conn, cursor = get_db_connection()
-    try:
-        # Check if tables exist and create them if needed
-        # Code omitted for brevity - same as original initialize_db function
-        pass
+        print(f"Database error: {err}")
+        return jsonify({"success": False, "error": str(err)}), 500
     finally:
         cursor.close()
         conn.close()
+
+# Clean cache periodically (simplified)
+@app.before_request
+def before_request():
+    # Clean expired cache entries every 100 requests
+    global request_counter
+    request_counter = getattr(app, 'request_counter', 0) + 1
+    setattr(app, 'request_counter', request_counter)
+    
+    if request_counter >= 100:
+        now = datetime.now()
+        expired_keys = [key for key, value in cache.items() 
+                      if isinstance(value, dict) and 'timestamp' in value 
+                      and (now - value['timestamp']).seconds > 600]
+        
+        for key in expired_keys:
+            cache.pop(key, None)
+            
+        setattr(app, 'request_counter', 0)
 
 if __name__ == '__main__':
     app.run(debug=True)

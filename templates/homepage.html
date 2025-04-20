@@ -3,36 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supervisor Recommender System</title>
+    <title>Past FYP Titles - Recommender System</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/homepage.css') }}"> 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="header">
         <div class="logo">SUPERVISOR RECOMMENDER SYSTEM</div>
         <div class="nav-links">
-            <a href="/homepage">Home</a>
-            <a href="/profiles.html">My Profile</a>
-            <a href="/logout">Logout</a>
+            <a href="/homepage"><i class="fas fa-home"></i> Home</a>
+            <a href="/profiles.html"><i class="fas fa-user"></i> My Profile</a>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </div>
     </div>
 
     <div class="container">
         <div class="search-container">
-            <span class="search-icon">🔍</span>
+            <span class="search-icon">
+                <i class="fas fa-search"></i>
+            </span>
             <input type="text" class="search-input" placeholder="Enter research topic or interest (e.g. AI, Image processing)" id="searchInput">
         </div>
 
         <div class="search-trends">
-            <h3>Search Trends</h3>
+            <h3><i class="fas fa-chart-line"></i> Search Trends</h3>
             <div class="trends-container">
                 <div class="trend-column">
-                    <div class="trend-title">Recently Searched</div>
+                    <div class="trend-title"><i class="fas fa-history"></i> Recently Searched</div>
                     <div class="trend-tags" id="recentSearches">
                         <!-- Recent searches will be populated here -->
                     </div>
                 </div>
                 <div class="trend-column">
-                    <div class="trend-title">Most Searched</div>
+                    <div class="trend-title"><i class="fas fa-fire"></i> Most Searched</div>
                     <div class="trend-tags" id="mostSearched">
                         <!-- Most searched items will be populated here -->
                     </div>
@@ -41,19 +44,22 @@
         </div>
 
         <div class="quick-links">
-            <h3>Quick Links</h3>
+            <h3><i class="fas fa-bolt"></i> Quick Links</h3>
             <ul>
-                <li><a href="/supervisor_list.html">View All Supervisors</a></li>
-                <li><a href="/past_fyp.html">Browse Past FYP Titles</a></li>
+                <li><a href="/supervisor_list.html"><i class="fas fa-users"></i> View All Supervisors</a></li>
+                <li><a href="/past_fyp.html"><i class="fas fa-project-diagram"></i> Browse Past FYP Titles</a></li>
             </ul>
         </div>
 
         <div id="loadingIndicator" class="loading">
-            Searching for matching supervisors...
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Searching for matching supervisors...</div>
         </div>
 
         <div id="noResults" class="no-results">
-            No supervisors found matching your search criteria.
+            <i class="fas fa-search" style="font-size: 40px; color: #ccc; margin-bottom: 15px;"></i>
+            <div>No supervisors found matching your search</div>
+            <div style="font-size: 14px; margin-top: 10px;">Try searching with different keywords</div>
         </div>
 
         <div id="searchResults">
@@ -67,17 +73,19 @@
                 <!-- Selected supervisor details -->
             </div>
 
-            <div>Supervisors with the same area of expertise:</div>
+            <div class="related-supervisors-header">
+                <i class="fas fa-users"></i> Supervisors with the same area of expertise:
+            </div>
 
             <div class="charts-container">
                 <div class="chart">
-                    <div class="chart-title">Area of expertise</div>
+                    <div class="chart-title"><i class="fas fa-chart-pie"></i> Area of expertise</div>
                     <div class="pie-chart">
                         <img src="/api/placeholder/300/200" alt="Pie Chart" style="max-width: 100%; max-height: 100%;">
                     </div>
                 </div>
                 <div class="chart">
-                    <div class="chart-title">Number of student supervised</div>
+                    <div class="chart-title"><i class="fas fa-chart-line"></i> Number of students supervised</div>
                     <div class="line-chart">
                         <img src="/api/placeholder/300/200" alt="Line Chart" style="max-width: 100%; max-height: 100%;">
                     </div>

@@ -10,23 +10,32 @@
     <div class="header">
         <div class="logo">SUPERVISOR RECOMMENDER SYSTEM</div>
         <div class="nav-links">
-            <a href="/homepage">Home</a>
-            <a href="/profiles.html">My Profile</a>
-            <a href="/logout">Logout</a>
+            <a href="/homepage"><i class="fas fa-home"></i> Home</a>
+            <a href="/profiles.html"><i class="fas fa-user"></i> My Profile</a>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </div>
     </div>
 
     <div class="container">
+        <h2>Past FYP Projects</h2>
+        
         <div class="search-container">
-            <span class="search-icon">🔍</span>
-            <input type="text" class="search-input" placeholder="Enter Author or title" id="searchInput">
+            <span class="search-icon">
+                <i class="fas fa-search"></i>
+            </span>
+            <input type="text" class="search-input" placeholder="Search by author, title or year..." id="searchInput">
         </div>
-
-        <h2>Past FYP Titles</h2>
         
         {% if error %}
-        <div class="error-message">{{ error }}</div>
+        <div class="error-message">
+            <i class="fas fa-exclamation-circle"></i> {{ error }}
+        </div>
         {% endif %}
+        
+        <div id="noResults" class="no-results" style="display: none;">
+            <i class="fas fa-search"></i>
+            <p>No projects match your search criteria</p>
+        </div>
         
         <table>
             <thead>
@@ -53,12 +62,82 @@
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
             <h3 id="modalTitle"></h3>
-            <p><strong>Author:</strong> <span id="modalAuthor"></span></p>
-            <p><strong>Year:</strong> <span id="modalYear"></span></p>
-            <p><strong>Abstract:</strong></p>
+            <div class="modal-info">
+                <p><strong><i class="fas fa-user"></i> Author:</strong> <span id="modalAuthor"></span></p>
+                <p><strong><i class="fas fa-calendar-alt"></i> Year:</strong> <span id="modalYear"></span></p>
+            </div>
+            <p><strong><i class="fas fa-file-alt"></i> Abstract:</strong></p>
             <p id="modalAbstract"></p>
         </div>
     </div>
+
+    <style>
+        /* Additional inline styles for extra features */
+        .highlight {
+            background-color: rgba(58, 123, 213, 0.2);
+            padding: 0 2px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+        
+        .ripple {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+            pointer-events: none;
+        }
+        
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 30px;
+            background-color: white;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            color: var(--text-medium);
+        }
+        
+        .no-results i {
+            font-size: 24px;
+            color: var(--text-light);
+            margin-bottom: 10px;
+        }
+        
+        .modal.active .modal-content {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        tbody tr {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .modal-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .modal-info p {
+            margin-right: 20px;
+        }
+        
+        .modal-info i {
+            color: var(--primary);
+            margin-right: 5px;
+        }
+    </style>
+    
     <script src="{{ url_for('static', filename='js/past_fyp.js') }}"></script>
 </body>
 </html>

@@ -3,41 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supervisor List - Recommender System</title>
+    <title>Past FYP Titles - Recommender System</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/supervisor_list.css') }}"> 
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="header">
         <div class="logo">SUPERVISOR RECOMMENDER SYSTEM</div>
         <div class="nav-links">
-            <a href="/homepage">Home</a>
-            <a href="/profiles.html">My Profile</a>
-            <a href="/logout">Logout</a>
+            <a href="/homepage"><i class="fas fa-home"></i> Home</a>
+            <a href="/profiles.html"><i class="fas fa-user"></i> My Profile</a>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </div>
     </div>
 
     <div class="container">
         <div class="search-container">
-            <span class="search-icon">🔍</span>
+            <span class="search-icon">
+                <i class="fas fa-search"></i>    
+            </span>
             <input type="text" class="search-input" placeholder="Filter supervisors by name or expertise" id="searchInput">
         </div>
 
         <div id="loadingIndicator" class="loading">
-            Loading supervisors...
+            <i class="fas fa-spinner fa-spin"></i> Loading supervisors...
         </div>
 
-        <h2>List of Supervisors</h2>
-        <table class="supervisor-list">
-            <thead>
-                <tr>
-                    <th>Supervisor Name</th>
-                    <th>Area of Expertise</th>
-                </tr>
-            </thead>
-            <tbody id="supervisorTableBody">
-                <!-- Supervisors will be dynamically loaded here -->
-            </tbody>
-        </table>
+        <div class="supervisor-section">
+            <h2>List of Supervisors</h2>
+            <div id="supervisorTableContainer">
+                <table class="supervisor-list">
+                    <thead>
+                        <tr>
+                            <th>Supervisor Name</th>
+                            <th>Area of Expertise</th>
+                        </tr>
+                    </thead>
+                    <tbody id="supervisorTableBody">
+                        <!-- Supervisors will be dynamically loaded here -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="noResults" class="no-results">
+                No supervisors match your search criteria.
+            </div>
+        </div>
     </div>
     <script src="{{ url_for('static', filename='js/supervisor_list.js') }}"></script>
 </body>

@@ -4,12 +4,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const supervisorId = urlParams.get('id');
     
     if (!supervisorId) {
-        document.getElementById('profileContent').innerHTML = '<div class="section">No supervisor selected. Please go back to the supervisor list.</div>';
+        document.getElementById('profileContent').innerHTML = `
+            <div class="section">
+                <div class="section-title">No supervisor selected</div>
+                <p>Please go back to the supervisor list and select a supervisor to view their profile.</p>
+                <a href="/homepage" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Homepage</a>
+            </div>`;
         return;
     }
     
     // Fetch supervisor details
     fetchSupervisorProfile(supervisorId);
+    
+    // Add back to top button
+    addBackToTopButton();
     
     // Setup search functionality
     const searchInput = document.getElementById('searchInput');
@@ -27,6 +35,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function fetchSupervisorProfile(supervisorId) {
     try {
+        // Show loading animation
+        document.getElementById('profileContent').innerHTML = `
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> Loading supervisor profile...
+            </div>`;
+            
         // Fetch supervisor data
         const response = await fetch(`/api/supervisor/${supervisorId}`);
         if (!response.ok) {
@@ -45,12 +59,18 @@ async function fetchSupervisorProfile(supervisorId) {
         // Render the profile
         renderProfile(supervisor, similarSupervisors, fypData.projects);
         
+        // Add event listeners after rendering
+        addEventListeners();
+        
     } catch (error) {
         console.error('Error:', error);
         document.getElementById('profileContent').innerHTML = `
             <div class="section">
                 <div class="section-title">Error</div>
                 <p>Failed to load supervisor profile. Please try again later.</p>
+                <button class="retry-btn" onclick="fetchSupervisorProfile('${supervisorId}')">
+                    <i class="fas fa-sync-alt"></i> Retry
+                </button>
             </div>
         `;
     }
@@ -82,39 +102,53 @@ function renderProfile(supervisor, similarSupervisors, fypProjects) {
     // Create the profile HTML
     const profileHTML = `
         <div class="profile-header">
-            <img src="${imageUrl}" alt="Supervisor" class="profile-image">
+            <img src="${imageUrl}" alt="${supervisor.SvName}" class="profile-image">
             <div class="profile-info">
                 <div class="profile-name">${supervisor.SvName}</div>
                 <div class="profile-title">Faculty of Computing</div>
-                <div class="contact-info">Email: ${supervisor.SvEmail || 'Not available'}</div>
-                <div class="contact-info">ID: ${supervisor.SupervisorID}</div>
+                <div class="contact-info"><i class="fas fa-envelope"></i> ${supervisor.SvEmail || 'Not available'}</div>
+                <div class="contact-info"><i class="fas fa-id-card"></i> ID: ${supervisor.SupervisorID}</div>
             </div>
         </div>
 
-        <div class="section">
-            <div class="section-title">Areas of Expertise</div>
-            ${expertiseAreas.map(area => `<div class="expertise-item">${area.trim()}</div>`).join('')}
+        <div class="section" id="expertiseSection">
+            <div class="section-title">
+                <i class="fas fa-star"></i> Areas of Expertise
+            </div>
+            <div class="expertise-tags">
+                ${expertiseAreas.map(area => `
+                    <div class="expertise-item" data-tooltip="Click to search related supervisors" 
+                         onclick="searchByExpertise('${area.trim()}')">
+                        ${area.trim()}
+                    </div>`).join('')}
+            </div>
             
             <canvas id="expertiseChart" class="expertise-chart"></canvas>
         </div>
 
-        <div class="section">
-            <div class="section-title">Similar Supervisors</div>
+        <div class="section" id="similarSection">
+            <div class="section-title">
+                <i class="fas fa-users"></i> Similar Supervisors
+            </div>
             <div class="similar-supervisors" id="similarSupervisors">
                 ${renderSimilarSupervisors(similarSupervisors, supervisor.SupervisorID)}
             </div>
         </div>
 
-        <div class="section">
-            <div class="section-title">Past FYP Projects Supervised</div>
+        <div class="section" id="projectsSection">
+            <div class="section-title">
+                <i class="fas fa-project-diagram"></i> Past FYP Projects Supervised
+            </div>
             ${renderFypProjects(fypProjects)}
         </div>
     `;
     
     document.getElementById('profileContent').innerHTML = profileHTML;
     
-    // Create expertise chart
-    createExpertiseChart(expertiseAreas);
+    // Create expertise chart with animation
+    setTimeout(() => {
+        createExpertiseChart(expertiseAreas);
+    }, 500);
 }
 
 function renderFypProjects(projects) {
@@ -126,8 +160,9 @@ function renderFypProjects(projects) {
         <div class="fyp-item">
             <div class="fyp-title">${project.Title}</div>
             <div class="fyp-description">${project.Abstract || 'No abstract available.'}</div>
-            <div style="font-size: 12px; color: #666; margin-top: 5px;">
-                Student: ${project.Author} | Year: ${project.Year}
+            <div class="fyp-meta">
+                <i class="fas fa-user-graduate"></i> <span>${project.Author}</span>
+                <i class="fas fa-calendar-alt"></i> <span>${project.Year}</span>
             </div>
         </div>
     `).join('');
@@ -144,7 +179,9 @@ function renderSimilarSupervisors(supervisors, currentId) {
         .map(supervisor => `
             <div class="similar-item">
                 <div class="similar-name">
-                    <a href="supervisor_profile.html?id=${supervisor.supervisor_id}">${supervisor.supervisor_name}</a>
+                    <a href="supervisor_profile.html?id=${supervisor.supervisor_id}">
+                        <i class="fas fa-user-tie"></i> ${supervisor.supervisor_name}
+                    </a>
                 </div>
                 <div class="similar-expertise">${supervisor.key_terms}</div>
                 <div class="similarity-score">Similarity: ${(supervisor.similarity * 100).toFixed(1)}%</div>
@@ -157,33 +194,67 @@ function createExpertiseChart(expertiseAreas) {
     
     const ctx = document.getElementById('expertiseChart').getContext('2d');
     
-    // Generate colors
-    const backgroundColors = generateColors(expertiseAreas.length);
+    // Generate colors with more vibrant gradients
+    const backgroundColors = expertiseAreas.map((_, i) => {
+        const hue = (i * 360 / expertiseAreas.length) % 360;
+        return {
+            backgroundColor: `linear-gradient(135deg, hsla(${hue}, 70%, 60%, 0.7), hsla(${hue + 30}, 70%, 60%, 0.7))`,
+            borderColor: `hsla(${hue}, 70%, 50%, 1)`
+        };
+    });
     
     // Create random values for demonstration (in a real app, you'd use actual data)
     const values = expertiseAreas.map(() => Math.floor(Math.random() * 50) + 50);
     
-    new Chart(ctx, {
+    const chart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: expertiseAreas,
             datasets: [{
                 label: 'Expertise Level',
                 data: values,
-                backgroundColor: backgroundColors,
-                borderColor: backgroundColors.map(color => color.replace('0.6', '1')),
-                borderWidth: 1
+                backgroundColor: backgroundColors.map(c => c.backgroundColor),
+                borderColor: backgroundColors.map(c => c.borderColor),
+                borderWidth: 1,
+                borderRadius: 6,
+                maxBarThickness: 50
             }]
         },
         options: {
             responsive: true,
+            animation: {
+                duration: 1500,
+                easing: 'easeOutQuart'
+            },
             plugins: {
                 legend: {
                     display: false
                 },
                 title: {
                     display: true,
-                    text: 'Expertise Distribution'
+                    text: 'Expertise Distribution',
+                    font: {
+                        size: 16,
+                        family: 'Poppins'
+                    },
+                    padding: {
+                        top: 10,
+                        bottom: 20
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    titleFont: {
+                        family: 'Poppins',
+                        size: 14
+                    },
+                    bodyFont: {
+                        family: 'Poppins',
+                        size: 13
+                    },
+                    padding: 12,
+                    cornerRadius: 6,
+                    displayColors: false
                 }
             },
             scales: {
@@ -192,19 +263,105 @@ function createExpertiseChart(expertiseAreas) {
                     max: 100,
                     title: {
                         display: true,
-                        text: 'Knowledge Level'
+                        text: 'Knowledge Level',
+                        font: {
+                            family: 'Poppins',
+                            size: 14
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0,0,0,0.05)'
+                    },
+                    ticks: {
+                        font: {
+                            family: 'Poppins',
+                            size: 12
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: {
+                            family: 'Poppins',
+                            size: 12
+                        }
+                    },
+                    grid: {
+                        display: false
                     }
                 }
             }
         }
     });
+    
+    // Add interactivity to the chart
+    document.getElementById('expertiseChart').addEventListener('click', function(evt) {
+        const activePoints = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
+        
+        if (activePoints.length > 0) {
+            const firstPoint = activePoints[0];
+            const label = chart.data.labels[firstPoint.index];
+            searchByExpertise(label);
+        }
+    });
 }
 
-function generateColors(count) {
-    const colors = [];
-    for (let i = 0; i < count; i++) {
-        const hue = (i * 360 / count) % 360;
-        colors.push(`hsla(${hue}, 70%, 60%, 0.6)`);
-    }
-    return colors;
+function addEventListeners() {
+    // Add smooth scrolling to section links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelector(this.getAttribute('href')).scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+    });
+    
+    // Add hover effects to expertise tags
+    document.querySelectorAll('.expertise-item').forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-3px)';
+        });
+        
+        item.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+        });
+    });
+}
+
+function searchByExpertise(expertise) {
+    window.location.href = `search_results.html?query=${encodeURIComponent(expertise)}`;
+}
+
+function addBackToTopButton() {
+    // Create the button
+    const backToTopBtn = document.createElement('div');
+    backToTopBtn.className = 'back-to-top';
+    backToTopBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+    document.body.appendChild(backToTopBtn);
+    
+    // Show/hide button based on scroll position
+    window.addEventListener('scroll', function() {
+        if (window.pageYOffset > 300) {
+            backToTopBtn.classList.add('visible');
+        } else {
+            backToTopBtn.classList.remove('visible');
+        }
+    });
+    
+    // Scroll to top when clicked
+    backToTopBtn.addEventListener('click', function() {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+}
+
+// Function to show section content gradually
+function animateSections() {
+    const sections = document.querySelectorAll('.section');
+    sections.forEach((section, index) => {
+        section.style.animationDelay = `${0.1 * (index + 1)}s`;
+    });
 }
