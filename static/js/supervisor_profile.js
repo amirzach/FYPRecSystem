@@ -123,15 +123,17 @@ function renderProfile(supervisor, similarSupervisors, fypProjects) {
                     </div>`).join('')}
             </div>
             
-            <canvas id="expertiseChart" class="expertise-chart"></canvas>
+            <div class="chart-container">
+                <canvas id="expertiseChart" class="expertise-chart"></canvas>
+            </div>
         </div>
 
         <div class="section" id="similarSection">
             <div class="section-title">
-                <i class="fas fa-users"></i> Similar Supervisors
+                <i class="fas fa-users"></i> Similar Supervisors Network
             </div>
-            <div class="similar-supervisors" id="similarSupervisors">
-                ${renderSimilarSupervisors(similarSupervisors, supervisor.SupervisorID)}
+            <div class="venn-container" id="vennContainer">
+                ${renderVennDiagram(similarSupervisors, supervisor)}
             </div>
         </div>
 
@@ -148,6 +150,10 @@ function renderProfile(supervisor, similarSupervisors, fypProjects) {
     // Create expertise chart with animation
     setTimeout(() => {
         createExpertiseChart(expertiseAreas);
+    }, 500);
+    
+    setTimeout(() => {
+        initializeVennDiagram(similarSupervisors, supervisor);
     }, 500);
 }
 
@@ -194,12 +200,14 @@ function createExpertiseChart(expertiseAreas) {
     
     const ctx = document.getElementById('expertiseChart').getContext('2d');
     
-    // Generate colors with more vibrant gradients
-    const backgroundColors = expertiseAreas.map((_, i) => {
+    // Generate vibrant colors for pie chart segments
+    const colors = expertiseAreas.map((_, i) => {
         const hue = (i * 360 / expertiseAreas.length) % 360;
         return {
-            backgroundColor: `linear-gradient(135deg, hsla(${hue}, 70%, 60%, 0.7), hsla(${hue + 30}, 70%, 60%, 0.7))`,
-            borderColor: `hsla(${hue}, 70%, 50%, 1)`
+            backgroundColor: `hsla(${hue}, 70%, 60%, 0.8)`,
+            borderColor: `hsla(${hue}, 70%, 45%, 1)`,
+            hoverBackgroundColor: `hsla(${hue}, 70%, 65%, 0.9)`,
+            hoverBorderColor: `hsla(${hue}, 70%, 40%, 1)`
         };
     });
     
@@ -207,35 +215,50 @@ function createExpertiseChart(expertiseAreas) {
     const values = expertiseAreas.map(() => Math.floor(Math.random() * 50) + 50);
     
     const chart = new Chart(ctx, {
-        type: 'bar',
+        type: 'pie',
         data: {
             labels: expertiseAreas,
             datasets: [{
-                label: 'Expertise Level',
+                label: 'Expertise Distribution',
                 data: values,
-                backgroundColor: backgroundColors.map(c => c.backgroundColor),
-                borderColor: backgroundColors.map(c => c.borderColor),
-                borderWidth: 1,
-                borderRadius: 6,
-                maxBarThickness: 50
+                backgroundColor: colors.map(c => c.backgroundColor),
+                borderColor: colors.map(c => c.borderColor),
+                hoverBackgroundColor: colors.map(c => c.hoverBackgroundColor),
+                hoverBorderColor: colors.map(c => c.hoverBorderColor),
+                borderWidth: 2,
+                hoverBorderWidth: 3
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             animation: {
                 duration: 1500,
-                easing: 'easeOutQuart'
+                easing: 'easeOutQuart',
+                animateRotate: true,
+                animateScale: true
             },
             plugins: {
                 legend: {
-                    display: false
+                    display: true,
+                    position: 'right',
+                    labels: {
+                        font: {
+                            family: 'Poppins',
+                            size: 12
+                        },
+                        padding: 15,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
+                    }
                 },
                 title: {
                     display: true,
                     text: 'Expertise Distribution',
                     font: {
                         size: 16,
-                        family: 'Poppins'
+                        family: 'Poppins',
+                        weight: 'bold'
                     },
                     padding: {
                         top: 10,
@@ -254,47 +277,28 @@ function createExpertiseChart(expertiseAreas) {
                     },
                     padding: 12,
                     cornerRadius: 6,
-                    displayColors: false
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${label}: ${percentage}%`;
+                        }
+                    }
                 }
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100,
-                    title: {
-                        display: true,
-                        text: 'Knowledge Level',
-                        font: {
-                            family: 'Poppins',
-                            size: 14
-                        }
-                    },
-                    grid: {
-                        color: 'rgba(0,0,0,0.05)'
-                    },
-                    ticks: {
-                        font: {
-                            family: 'Poppins',
-                            size: 12
-                        }
-                    }
-                },
-                x: {
-                    ticks: {
-                        font: {
-                            family: 'Poppins',
-                            size: 12
-                        }
-                    },
-                    grid: {
-                        display: false
-                    }
-                }
+            layout: {
+                padding: 20
+            },
+            onHover: (event, activeElements) => {
+                event.native.target.style.cursor = activeElements.length > 0 ? 'pointer' : 'default';
             }
         }
     });
     
-    // Add interactivity to the chart
+    // Add interactivity to the chart - click on pie segments to search by expertise
     document.getElementById('expertiseChart').addEventListener('click', function(evt) {
         const activePoints = chart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true);
         
@@ -364,4 +368,236 @@ function animateSections() {
     sections.forEach((section, index) => {
         section.style.animationDelay = `${0.1 * (index + 1)}s`;
     });
+}
+
+// New function to render Venn diagram structure
+function renderVennDiagram(similarSupervisors, currentSupervisor) {
+    if (!similarSupervisors || similarSupervisors.length === 0) {
+        return '<p>No similar supervisors found.</p>';
+    }
+    
+    return `
+        <div class="venn-diagram-container">
+            <svg id="vennSvg" width="600" height="400" viewBox="0 0 600 400">
+                <!-- Background -->
+                <rect width="600" height="400" fill="#f8fafc" rx="12"/>
+                
+                <!-- Main supervisor circle (center) -->
+                <circle id="mainCircle" cx="300" cy="200" r="80" 
+                        fill="rgba(58, 123, 213, 0.3)" 
+                        stroke="rgba(58, 123, 213, 0.8)" 
+                        stroke-width="2"/>
+                
+                <!-- Similar supervisor circles -->
+                ${generateSimilarCircles(similarSupervisors)}
+                
+                <!-- Labels and names -->
+                <text x="300" y="200" text-anchor="middle" 
+                      font-family="Poppins" font-weight="600" font-size="12" 
+                      fill="#2c3e50">
+                    ${truncateName(currentSupervisor.SvName)}
+                </text>
+                
+                ${generateSimilarLabels(similarSupervisors, currentSupervisor.SupervisorID)}
+            </svg>
+            
+            <!-- Legend and details -->
+            <div class="venn-legend">
+                <div class="legend-item current">
+                    <div class="legend-color" style="background: rgba(58, 123, 213, 0.3);"></div>
+                    <span>Current Supervisor</span>
+                </div>
+                <div class="legend-item similar">
+                    <div class="legend-color" style="background: rgba(0, 210, 255, 0.3);"></div>
+                    <span>Similar Supervisors</span>
+                </div>
+                <div class="legend-item overlap">
+                    <div class="legend-color" style="background: rgba(255, 107, 107, 0.3);"></div>
+                    <span>Shared Expertise</span>
+                </div>
+            </div>
+            
+            <!-- Supervisor details panel -->
+            <div class="supervisor-details" id="supervisorDetails">
+                <div class="details-header">Supervisor Information</div>
+                <div class="details-content" id="detailsContent">
+                    Click on a supervisor circle to view details
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Generate circles for similar supervisors
+function generateSimilarCircles(similarSupervisors) {
+    const positions = [
+        { cx: 180, cy: 140 },  // Top-left
+        { cx: 420, cy: 140 },  // Top-right
+        { cx: 180, cy: 260 },  // Bottom-left
+        { cx: 420, cy: 260 }   // Bottom-right
+    ];
+    
+    return similarSupervisors
+        .slice(0, 4)
+        .map((supervisor, index) => {
+            const pos = positions[index];
+            const similarity = supervisor.similarity || 0;
+            const opacity = Math.max(0.2, similarity * 0.8);
+            
+            return `
+                <circle id="circle_${supervisor.supervisor_id}" 
+                        cx="${pos.cx}" cy="${pos.cy}" r="60"
+                        fill="rgba(0, 210, 255, ${opacity})" 
+                        stroke="rgba(0, 210, 255, 0.8)" 
+                        stroke-width="2"
+                        class="similar-circle"
+                        data-supervisor-id="${supervisor.supervisor_id}"
+                        data-supervisor-name="${supervisor.supervisor_name}"
+                        data-expertise="${supervisor.key_terms}"
+                        data-similarity="${(similarity * 100).toFixed(1)}"
+                        style="cursor: pointer; transition: all 0.3s ease;"/>
+            `;
+        }).join('');
+}
+
+// Generate labels for similar supervisors
+function generateSimilarLabels(similarSupervisors, currentId) {
+    const positions = [
+        { x: 180, y: 140 },
+        { x: 420, y: 140 },
+        { x: 180, y: 260 },
+        { x: 420, y: 260 }
+    ];
+    
+    return similarSupervisors
+        .filter(s => s.supervisor_id != currentId)
+        .slice(0, 4)
+        .map((supervisor, index) => {
+            const pos = positions[index];
+            return `
+                <text x="${pos.x}" y="${pos.y}" text-anchor="middle" 
+                      font-family="Poppins" font-weight="500" font-size="10" 
+                      fill="#2c3e50" class="supervisor-label"
+                      data-supervisor-id="${supervisor.supervisor_id}">
+                    ${truncateName(supervisor.supervisor_name)}
+                </text>
+                <text x="${pos.x}" y="${pos.y + 12}" text-anchor="middle" 
+                      font-family="Poppins" font-weight="400" font-size="8" 
+                      fill="#7f8c8d">
+                    ${(supervisor.similarity * 100).toFixed(1)}%
+                </text>
+            `;
+        }).join('');
+}
+
+// Initialize interactive Venn diagram
+function initializeVennDiagram(similarSupervisors, currentSupervisor) {
+    const svg = document.getElementById('vennSvg');
+    if (!svg) return;
+    
+    // Add hover effects and click handlers
+    const circles = svg.querySelectorAll('.similar-circle');
+    
+    circles.forEach(circle => {
+        // Hover effects
+        circle.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.1)';
+            this.style.transformOrigin = `${this.getAttribute('cx')}px ${this.getAttribute('cy')}px`;
+            this.style.filter = 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))';
+        });
+        
+        circle.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+            this.style.filter = 'none';
+        });
+        
+        // Click handler to show details
+        circle.addEventListener('click', function() {
+            const supervisorId = this.dataset.supervisorId;
+            const supervisorName = this.dataset.supervisorName;
+            const expertise = this.dataset.expertise;
+            const similarity = this.dataset.similarity;
+            
+            showSupervisorDetails(supervisorId, supervisorName, expertise, similarity);
+            
+            // Remove previous selection
+            circles.forEach(c => c.classList.remove('selected'));
+            // Add selection to current circle
+            this.classList.add('selected');
+        });
+    });
+    
+    // Add click handler to main circle
+    const mainCircle = document.getElementById('mainCircle');
+    if (mainCircle) {
+        mainCircle.addEventListener('click', function() {
+            showSupervisorDetails(
+                currentSupervisor.SupervisorID, 
+                currentSupervisor.SvName, 
+                currentSupervisor.expertise_areas, 
+                '100.0'
+            );
+            
+            circles.forEach(c => c.classList.remove('selected'));
+        });
+        
+        mainCircle.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.05)';
+            this.style.transformOrigin = '300px 200px';
+            this.style.filter = 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))';
+        });
+        
+        mainCircle.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+            this.style.filter = 'none';
+        });
+    }
+}
+
+// Show supervisor details in the panel
+function showSupervisorDetails(supervisorId, name, expertise, similarity) {
+    const detailsContent = document.getElementById('detailsContent');
+    if (!detailsContent) return;
+    
+    const expertiseList = expertise ? expertise.split(', ').slice(0, 5) : [];
+    
+    detailsContent.innerHTML = `
+        <div class="supervisor-info">
+            <div class="supervisor-name-detail">
+                <i class="fas fa-user-tie"></i> ${name}
+            </div>
+            <div class="similarity-detail">
+                <i class="fas fa-chart-line"></i> Similarity: ${similarity}%
+            </div>
+            <div class="expertise-detail">
+                <i class="fas fa-star"></i> Key Areas:
+                <div class="expertise-tags-small">
+                    ${expertiseList.map(area => `
+                        <span class="expertise-tag-small">${area.trim()}</span>
+                    `).join('')}
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button class="view-profile-btn" onclick="window.location.href='supervisor_profile.html?id=${supervisorId}'">
+                    <i class="fas fa-eye"></i> View Profile
+                </button>
+                <button class="compare-btn" onclick="compareSupervisors('${supervisorId}')">
+                    <i class="fas fa-balance-scale"></i> Compare
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Utility function to truncate long names
+function truncateName(name, maxLength = 15) {
+    if (!name) return '';
+    return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
+}
+
+// Compare supervisors function (placeholder)
+function compareSupervisors(supervisorId) {
+    // Implement comparison functionality
+    console.log('Comparing with supervisor:', supervisorId);
+    // You can redirect to a comparison page or show a modal
 }
