@@ -231,11 +231,16 @@ body {
   color: var(--primary);
 }
 
+.chart-container {
+  width: 400px;
+  height: 400px;
+  margin: 20px auto;
+  position: relative;
+}
+
 .expertise-chart {
-  width: 100%;
-  height: 300px;
-  margin-top: 25px;
-  transition: var(--transition);
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .similar-supervisors {
@@ -450,4 +455,234 @@ body {
 
 .back-to-top:hover {
   transform: translateY(-3px);
+}
+
+/* Venn Diagram Styles */
+.venn-diagram-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+#vennSvg {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  background: white;
+}
+
+.similar-circle {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.similar-circle:hover {
+  stroke-width: 3;
+}
+
+.similar-circle.selected {
+  stroke: #ff6b6b;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 10px rgba(255, 107, 107, 0.5));
+}
+
+.supervisor-label {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Legend Styles */
+.venn-legend {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-medium);
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.2);
+}
+
+/* Supervisor Details Panel */
+.supervisor-details {
+  width: 100%;
+  max-width: 500px;
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(0,0,0,0.05);
+  margin-top: 10px;
+}
+
+.details-header {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--bg-dark);
+}
+
+.supervisor-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.supervisor-name-detail {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.similarity-detail {
+  font-size: 14px;
+  color: var(--text-medium);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expertise-detail {
+  font-size: 14px;
+  color: var(--text-medium);
+}
+
+.expertise-detail i {
+  color: var(--primary);
+  margin-right: 8px;
+}
+
+.expertise-tags-small {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.expertise-tag-small {
+  background: linear-gradient(135deg, #f0f3f8, #e5eaf2);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-medium);
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.view-profile-btn,
+.compare-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.view-profile-btn {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: white;
+}
+
+.view-profile-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.compare-btn {
+  background: linear-gradient(135deg, var(--accent), #ff8e8e);
+  color: white;
+}
+
+.compare-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .venn-diagram-container {
+    padding: 15px;
+  }
+  
+  #vennSvg {
+    width: 100%;
+    height: 300px;
+  }
+  
+  .venn-legend {
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .supervisor-details {
+    padding: 15px;
+  }
+}
+
+/* Animation for circle interactions */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.similar-circle:hover {
+  animation: pulse 0.6s ease-in-out;
+}
+
+/* Loading state for Venn diagram */
+.venn-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+  color: var(--text-medium);
+}
+
+.venn-loading i {
+  font-size: 24px;
+  margin-right: 10px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
