@@ -431,6 +431,36 @@ def get_supervisor_fyp(supervisor_id):
     finally:
         cursor.close()
         conn.close()
+        
+@app.route('/api/supervisor_papers/<int:supervisor_id>', methods=['GET'])
+def get_supervisor_papers(supervisor_id):
+    if 'username' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+   
+    cache_key = f"supervisor_papers:{supervisor_id}"
+    cached_data = get_cached_data(cache_key)
+    if cached_data:
+        return jsonify({"projects": cached_data})
+       
+    conn, cursor = get_db_connection()
+    try:
+        cursor.execute("""
+            SELECT PaperTitle, PaperYear, PaperAbstract, PaperKeywords, SupervisorID
+            FROM papers
+            WHERE SupervisorID = %s
+            ORDER BY PaperYear DESC, PaperTitle
+        """, (supervisor_id,))
+       
+        projects = cursor.fetchall()
+        set_cached_data(cache_key, projects)
+       
+        return jsonify({"projects": projects})
+    except mysql.connector.Error as err:
+        print(f"Database error: {err}")
+        return jsonify({"error": str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
 @app.route('/admin/login', methods=['POST'])
 def admin_login():
