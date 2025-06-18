@@ -49,15 +49,15 @@ async function fetchSupervisorProfile(supervisorId) {
         
         const supervisor = await response.json();
         
-        // Fetch past FYP projects supervised by this supervisor
-        const fypResponse = await fetch(`/api/supervisor_fyp/${supervisorId}`);
-        const fypData = await fypResponse.json();
+        // Fetch papers published by this supervisor (changed from FYP projects)
+        const papersResponse = await fetch(`/api/supervisor_papers/${supervisorId}`);
+        const papersData = await papersResponse.json();
         
         // Once we have the supervisor data, find similar supervisors
         const similarSupervisors = await fetchSimilarSupervisors(supervisor.expertise_areas);
         
         // Render the profile
-        renderProfile(supervisor, similarSupervisors, fypData.projects);
+        renderProfile(supervisor, similarSupervisors, papersData.projects);
         
         // Add event listeners after rendering
         addEventListeners();
@@ -91,7 +91,7 @@ async function fetchSimilarSupervisors(expertise) {
     }
 }
 
-function renderProfile(supervisor, similarSupervisors, fypProjects) {
+function renderProfile(supervisor, similarSupervisors, papers) {
     // Generate image URL - use supervisor's name for the image file
     // Convert supervisor name to a filename by replacing spaces with underscores
     const imageFilename = `${supervisor.SvName.replace(/\s+/g, '_')}.jpg`;
@@ -137,11 +137,11 @@ function renderProfile(supervisor, similarSupervisors, fypProjects) {
             </div>
         </div>
 
-        <div class="section" id="projectsSection">
+        <div class="section" id="papersSection">
             <div class="section-title">
-                <i class="fas fa-project-diagram"></i> Past FYP Projects Supervised
+                <i class="fas fa-file-alt"></i> Published Papers
             </div>
-            ${renderFypProjects(fypProjects)}
+            ${renderPapers(papers)}
         </div>
     `;
     
@@ -155,6 +155,26 @@ function renderProfile(supervisor, similarSupervisors, fypProjects) {
     setTimeout(() => {
         initializeVennDiagram(similarSupervisors, supervisor);
     }, 500);
+}
+
+function renderPapers(papers) {
+    if (!papers || papers.length === 0) {
+        return '<p>No published papers found for this supervisor.</p>';
+    }
+    
+    return papers.map(paper => `
+        <div class="paper-item">
+            <div class="paper-title">${paper.PaperTitle}</div>
+            <div class="paper-abstract">${paper.PaperAbstract || 'No abstract available.'}</div>
+            <div class="paper-keywords">
+                ${paper.PaperKeywords ? `<i class="fas fa-tags"></i> <span class="keywords">${paper.PaperKeywords}</span>` : ''}
+            </div>
+            <div class="paper-meta">
+                <i class="fas fa-calendar-alt"></i> <span>Published: ${paper.PaperYear}</span>
+                <i class="fas fa-user"></i> <span>Supervisor ID: ${paper.SupervisorID}</span>
+            </div>
+        </div>
+    `).join('');
 }
 
 function renderFypProjects(projects) {
